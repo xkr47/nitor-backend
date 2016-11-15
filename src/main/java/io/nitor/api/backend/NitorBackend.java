@@ -31,6 +31,10 @@ public class NitorBackend extends AbstractVerticle
     {
         Router router = Router.router(vertx);
 
+        router.get("/healthCheck").handler(routingContext -> {
+           routingContext.response().sendFile("pom.xml");
+        });
+
         vertx.createHttpServer(
             new HttpServerOptions()
                 .setSsl(true)
