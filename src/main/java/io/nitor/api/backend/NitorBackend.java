@@ -1,6 +1,7 @@
 package io.nitor.api.backend;
 
 import static com.nitorcreations.core.utils.KillProcess.killProcessUsingPort;
+import static io.vertx.core.http.ClientAuth.REQUEST;
 import static io.vertx.core.http.ClientAuth.REQUIRED;
 import static java.lang.Integer.getInteger;
 import static java.lang.System.getProperty;
@@ -23,8 +24,7 @@ public class NitorBackend extends AbstractVerticle
     public static void main(String... args)
     {
         killProcessUsingPort(listenPort);
-        if (getProperty("java.version", "").startsWith("9"))
-        {
+        if (getProperty("java.version", "").startsWith("9")) {
             setProperty("io.netty.noKeySetOptimization", "true");
         }
         Launcher.main(new String[] { "run", NitorBackend.class.getName(), "-conf", "conf.json" });
@@ -39,13 +39,13 @@ public class NitorBackend extends AbstractVerticle
             new HttpServerOptions()
                 .setSsl(true)
                 .setUseAlpn(true)
-                //.setClientAuth(REQUIRED)
+                .setClientAuth(REQUEST)
                 .setReuseAddress(true)
                 .setSslEngineOptions(new OpenSSLEngineOptions())
                 /*.setPemTrustOptions(new PemTrustOptions()
                     .addCertPath("certs/localhost.chain"))*/
                 .setPemKeyCertOptions(new PemKeyCertOptions()
-                    .setKeyPath("certs/localhost.key")
+                    .setKeyPath("certs/localhost.key.clear")
                     .setCertPath("certs/localhost.crt"))
                 /*.setTrustStoreOptions(
                     new JksOptions().
