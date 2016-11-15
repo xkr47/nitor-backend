@@ -28,6 +28,8 @@
     <orderEntry type="library" name="Maven: com.fasterxml.jackson.core:jackson-annotations:2.7.0" level="project" />
     <orderEntry type="library" name="Maven: io.vertx:vertx-web:3.3.3" level="project" />
     <orderEntry type="library" name="Maven: io.vertx:vertx-auth-common:3.3.3" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: io.vertx:vertx-codegen:3.3.3" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.mvel:mvel2:2.2.8.Final" level="project" />
     <orderEntry type="library" name="Maven: io.netty:netty-tcnative-boringssl-static:linux-x86_64:1.1.33.Fork23" level="project" />
     <orderEntry type="library" name="Maven: com.nitorcreations:core-utils:1.4" level="project" />
     <orderEntry type="library" name="Maven: com.github.alaisi.pgasync:postgres-async-driver:0.9" level="project" />
