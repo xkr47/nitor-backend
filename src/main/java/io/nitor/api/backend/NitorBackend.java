@@ -9,6 +9,7 @@ import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.net.OpenSSLEngineOptions;
 import io.vertx.core.net.PemKeyCertOptions;
+import io.vertx.core.net.PemTrustOptions;
 import io.vertx.ext.web.Router;
 
 import static com.nitorcreations.core.utils.KillProcess.killProcessUsingPort;
@@ -57,16 +58,30 @@ public class NitorBackend extends AbstractVerticle
 
         vertx.createHttpServer(
             new HttpServerOptions()
-                .setSsl(true)
-                .setUseAlpn(true)
-                .setClientAuth(REQUEST)
+                // basic TCP/HTTP options
                 .setReuseAddress(true)
                 .setCompressionSupported(true)
+                // TLS + HTTP/2
+                .setSsl(true)
+                .setUseAlpn(true)
                 .setSslEngineOptions(new OpenSSLEngineOptions())
+                // server side certificate
                 .setPemKeyCertOptions(new PemKeyCertOptions()
                     .setKeyPath("certs/localhost.key.clear")
                     .setCertPath("certs/localhost.crt"))
+                // TLS tuning
+                .addEnabledSecureTransportProtocol("TLSv1.2")
+                .addEnabledSecureTransportProtocol("TLSv1.3")
+                .addEnabledCipherSuite("ECDHE-RSA-AES128-GCM-SHA256")
+                .addEnabledCipherSuite("ECDHE-ECDSA-AES128-GCM-SHA256")
+                .addEnabledCipherSuite("ECDHE-RSA-AES256-GCM-SHA384")
+                .addEnabledCipherSuite("ECDHE-ECDSA-AES256-GCM-SHA384")
+                // client side certificate
+                .setClientAuth(REQUEST)
+                .setTrustOptions(new PemTrustOptions()
+                    .addCertPath("certs/client.chain")
                 )
+            )
             .requestHandler(router::accept)
             .listen(listenPort);
     }
