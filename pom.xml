@@ -50,6 +50,11 @@
       <version>0.9</version>
     </dependency>
     <dependency>
+      <groupId>org.mortbay.jetty.alpn</groupId>
+      <artifactId>jetty-alpn-agent</artifactId>
+      <version>2.0.5</version>
+    </dependency>
+    <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
       <version>5.0.0-M2</version>
@@ -57,12 +62,6 @@
     </dependency>
   </dependencies>
   <build>
-    <resources>
-      <resource>
-        <directory>target/generated-resources</directory>
-        <filtering>false</filtering>
-      </resource>
-    </resources>
     <extensions>
       <extension>
         <groupId>kr.motd.maven</groupId>
@@ -122,31 +121,6 @@
               </transformers>
               <artifactSet/>
               <outputFile>${project.build.directory}/${project.artifactId}-${project.version}-fat.jar</outputFile>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <artifactId>maven-dependency-plugin</artifactId>
-        <version>2.10</version>
-        <executions>
-          <execution>
-            <id>get-jetty-alpn-agent</id>
-            <phase>generate-resources</phase>
-            <goals>
-              <goal>copy</goal>
-            </goals>
-            <configuration>
-              <artifactItems>
-                <artifactItem>
-                  <groupId>org.mortbay.jetty.alpn</groupId>
-                  <artifactId>jetty-alpn-agent</artifactId>
-                  <version>2.0.5</version>
-                  <overWrite>false</overWrite>
-                  <outputDirectory>target/generated-resources</outputDirectory>
-                  <destFileName>jetty-alpn-agent.jar</destFileName>
-                </artifactItem>
-              </artifactItems>
             </configuration>
           </execution>
         </executions>

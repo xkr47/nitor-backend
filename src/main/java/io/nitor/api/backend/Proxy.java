@@ -1,5 +1,7 @@
 package io.nitor.api.backend;
 
+import static java.util.Arrays.asList;
+
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
@@ -8,6 +10,7 @@ import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.streams.Pump;
 
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -59,19 +62,16 @@ public class Proxy {
         noHostHeader,
     }
 
-    static final Set<String> hopByHopHeaders = new HashSet<String>(){
-        {
-            add("connection");
-            add("keep-alive");
-            add("proxy-authenticate");
-            add("proxy-authorization");
-            add("te");
-            add("trailer");
-            add("transfer-encoding");
-            add("upgrade");
+    static final Set<String> hopByHopHeaders = new HashSet<>(asList(
+            "connection",
+            "keep-alive",
+            "proxy-authenticate",
+            "proxy-authorization",
+            "te",
+            "trailer",
+            "transfer-encoding",
+            "upgrade"));
             // TODO http2 hbh headers
-        }
-    };
 
     static final Pattern connectionHeaderValueRE = Pattern.compile("\\s*,[\\s,]*+"); // from RFC2616
 

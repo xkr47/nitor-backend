@@ -4,25 +4,12 @@ import static com.nitorcreations.core.utils.KillProcess.killProcessUsingPort;
 import static io.vertx.core.http.ClientAuth.REQUEST;
 import static java.lang.Boolean.getBoolean;
 import static java.lang.Integer.getInteger;
-import static java.lang.System.err;
 import static java.lang.System.getProperty;
 import static java.lang.System.setProperty;
-import static java.lang.management.ManagementFactory.getRuntimeMXBean;
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.util.Arrays.asList;
 
-import java.io.InputStream;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.nio.file.CopyOption;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Stream;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
 
@@ -73,7 +60,7 @@ public class NitorBackend extends AbstractVerticle
             try {
                 resp = "Certs: " + Arrays.toString(routingContext.request().peerCertificateChain());
             } catch (SSLPeerUnverifiedException e) {
-                resp = "No client certs avavilable:" + e.getMessage();
+                resp = "No client certs available:" + e.getMessage();
             }
             routingContext.response().setChunked(true).write(resp).end();
         });
@@ -118,14 +105,11 @@ public class NitorBackend extends AbstractVerticle
             httpOptions
                 .setUseAlpn(true)
                 .setSslEngineOptions(new OpenSSLEngineOptions());
-            cipherSuites.stream().map(s ->
-                s.replace("TLS_", "")
-                 .replace("WITH_AES_", "AES")
-                 .replace('_', '-'))
+            cipherSuites.stream().map(NitorBackend::javaCipherNameToOpenSSLName)
               .forEach(httpOptions::addEnabledCipherSuite);
         } else {
             httpOptions
-                .setUseAlpn(enableJettyAlpn())
+                .setUseAlpn(DynamicAgent.enableJettyAlpn())
                 .setJdkSslEngineOptions(new JdkSSLEngineOptions());
             cipherSuites.forEach(httpOptions::addEnabledCipherSuite);
         }
@@ -135,51 +119,9 @@ public class NitorBackend extends AbstractVerticle
             .listen(listenPort);
     }
 
-    private static boolean enableJettyAlpn() {
-        if (getProperty("java.version", "").startsWith("9")) {
-            err.println("Netty does not jet support alpn on java 9");
-            return false; // java9 supports alpn natively but netty does not yet support java9
-        }
-        Path javaHome = Paths.get(getProperty("java.home"));
-        Optional<Path> toolsPath = Stream.of("lib/tools.jar", "../lib/tools.jar").map(javaHome::resolve).filter(Files::exists).findFirst();
-        if (!toolsPath.isPresent()) {
-            err.println("Could not find tools.jar from java installation at " + javaHome);
-            return false;
-        }
-
-        try {
-            InputStream in = NitorBackend.class.getResourceAsStream("/jetty-alpn-agent.jar");
-            if (in == null) {
-                err.println("jetty-alpn-agent.jar not found from classpath");
-                return false;
-            }
-            Path agentPath = Files.createTempFile("jetty-alpn-agent", ".jar");
-            Files.copy(in, agentPath, REPLACE_EXISTING);
-
-            URL[] urls = new URL[] {
-                NitorBackend.class.getProtectionDomain().getCodeSource().getLocation(),
-                toolsPath.get().toUri().toURL()
-            };
-
-            URLClassLoader loader = new URLClassLoader(urls, null);
-            Class<?> virtualMachineClass = loader.loadClass("com.sun.tools.attach.VirtualMachine");
-
-            String nameOfRunningVM = getRuntimeMXBean().getName();
-            int p = nameOfRunningVM.indexOf('@');
-            if (p < 0) {
-                err.println("Could not parse current jvm pid");
-                return false;
-            }
-            String pid = nameOfRunningVM.substring(0, p);
-
-            Object virtualMachine = virtualMachineClass.getMethod("attach", String.class).invoke(null, pid);
-            virtualMachineClass.getMethod("loadAgent", String.class).invoke(virtualMachine, agentPath.toString());
-            virtualMachineClass.getMethod("detach").invoke(virtualMachine);
-
-            return true;
-        } catch (Exception e) {
-            err.println("Could not initialize jetty-alpn-agent correctly: " + e);
-            return false;
-        }
+    static String javaCipherNameToOpenSSLName(String name) {
+        return name.replace("TLS_", "")
+            .replace("WITH_AES_", "AES")
+            .replace('_', '-');
     }
 }
