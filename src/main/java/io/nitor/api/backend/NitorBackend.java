@@ -7,6 +7,7 @@ import static java.lang.Integer.getInteger;
 import static java.lang.System.getProperty;
 import static java.lang.System.setProperty;
 import static java.util.Arrays.asList;
+import static java.util.concurrent.TimeUnit.MINUTES;
 
 import java.util.Arrays;
 import java.util.List;
@@ -48,8 +49,7 @@ public class NitorBackend extends AbstractVerticle
     }
 
     @Override
-    public void start()
-    {
+    public void start() {
         Router router = Router.router(vertx);
 
         router.get("/healthCheck").handler(routingContext -> {
@@ -87,6 +87,7 @@ public class NitorBackend extends AbstractVerticle
             // basic TCP/HTTP options
             .setReuseAddress(true)
             .setCompressionSupported(true)
+            .setIdleTimeout((int) MINUTES.toSeconds(10))
             // TLS + HTTP/2
             .setSsl(true)
             // server side certificate
