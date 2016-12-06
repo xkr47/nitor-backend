@@ -1,0 +1,12 @@
+[Unit]
+Description=HTTP to HTTPS redirector socket
+
+[Socket]
+ListenStream=80
+NoDelay=true
+DeferAcceptSec=5
+Backlog=128
+
+[Install]
+WantedBy=sockets.target
+

@@ -1,0 +1,25 @@
+[Unit]
+Description=HTTP to HTTPS redirector
+After=network.target
+
+[Service]
+StandardInput=socket
+DynamicUser=true
+WorkingDirectory=/tmp
+ExecStart=/usr/bin/java -Xss256k -Xmx64M -cp /home/mtiihone/nitor/workspace/nitor-backend/target/backend-1.0.0-fat.jar io.nitor.api.backend.ToHttpsRedirect
+Restart=always
+RestartSec=10
+Nice=5
+
+# stricter security 
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateUsers=yes
+PrivateDevices=yes
+
+[Install]
+WantedBy=multi-user.target
+
