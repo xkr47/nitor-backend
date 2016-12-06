@@ -2,12 +2,15 @@ package io.nitor.api.backend;
 
 import static com.nitorcreations.core.utils.KillProcess.killProcessUsingPort;
 import static io.vertx.core.http.ClientAuth.REQUEST;
+import static io.vertx.core.http.HttpVersion.HTTP_1_1;
+import static io.vertx.core.http.HttpVersion.HTTP_2;
 import static java.lang.Boolean.getBoolean;
 import static java.lang.Integer.getInteger;
 import static java.lang.System.getProperty;
 import static java.lang.System.setProperty;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import java.util.Arrays;
 import java.util.List;
@@ -66,20 +69,24 @@ public class NitorBackend extends AbstractVerticle
         });
 
         HttpClient client = vertx.createHttpClient(new HttpClientOptions()
-                .setConnectTimeout(10)
-                .setIdleTimeout(120)
+                .setConnectTimeout((int) SECONDS.toMillis(10))
+                .setIdleTimeout((int) MINUTES.toSeconds(2))
                 .setMaxPoolSize(1000)
                 .setMaxWaitQueueSize(20)
+                .setProtocolVersion(HTTP_1_1)
                 .setTryUseCompression(false));
         Proxy proxy = new Proxy(client,
-                (request, isTls) -> new Target("localhost", 8080, "/", "suchhost"),
+                (request, isTls) -> new Target("example.org", 80, "/", "example.org"),
                 (request, status, reason, detail) -> {
-            String statusMsg = detail != null ? detail : reason == RejectReason.noHostHeader ? "Exhausted resources while trying to extract Host header from the request" : "";
-            request.response().setStatusCode(status);
-            request.response().headers().set("content-type", "text/plain;charset=UTF-8");
-            request.response().end(statusMsg);
+            if (!request.response().headWritten()) {
+                String statusMsg =
+                    detail != null?detail:reason == RejectReason.noHostHeader?"Exhausted resources while trying to extract Host header from the request":"";
+                request.response().setStatusCode(status);
+                request.response().headers().set("content-type", "text/plain;charset=UTF-8");
+                request.response().end(statusMsg);
+            }
         });
-        router.get("/proxy").handler(routingContext -> proxy.handle(routingContext.request(), true));
+        router.get("/proxy").handler(routingContext -> proxy.handle(routingContext.request(), "https".equals(routingContext.request().scheme()), routingContext.request().version() == HTTP_2));
 
         boolean useNativeOpenSsl = getBoolean("openssl");
 

@@ -70,8 +70,13 @@ public class Proxy {
             "te",
             "trailer",
             "transfer-encoding",
-            "upgrade"));
+            "upgrade",
             // TODO http2 hbh headers
+            ":method",
+            ":path",
+            ":scheme",
+            ":authority"
+        ));
 
     static final Pattern connectionHeaderValueRE = Pattern.compile("\\s*,[\\s,]*+"); // from RFC2616
 
@@ -95,7 +100,7 @@ public class Proxy {
 
     static final AtomicLong requestId = new AtomicLong(Clock.systemUTC().millis());
 
-    public void handle(final HttpServerRequest sreq, final boolean isTls) {
+    public void handle(final HttpServerRequest sreq, final boolean isTls, final boolean isHTTP2) {
         if (!sreq.headers().contains(requestIdHeader)) {
             String reqId = Long.toString(requestId.getAndIncrement());
             sreq.headers().add(requestIdHeader, reqId);
@@ -103,8 +108,10 @@ public class Proxy {
         String chost = sreq.remoteAddress().host();
 
         HttpServerResponse sres = sreq.response();
-        sres.headers().add("keep-alive", keepAliveHeaderValue);
-        sres.headers().add("connection", "keep-alive");
+        if (!isHTTP2) {
+            sres.headers().add("keep-alive", keepAliveHeaderValue);
+            sres.headers().add("connection", "keep-alive");
+        }
         sreq.exceptionHandler(t -> errorHandler.fail(sreq, 500, RejectReason.incomingRequestFail, t.getMessage()));
         Target nextHop = targetResolver.resolveNextHop(sreq, isTls);
 
@@ -114,7 +121,13 @@ public class Proxy {
         }
 
         MultiMap sreqh = sreq.headers();
-        String origHost = sreqh.get("Host");
+        String origHost = null;
+        if (isHTTP2) {
+            origHost = sreqh.get(":authority");
+        }
+        if (origHost == null) {
+            origHost = sreqh.get("Host");
+        }
         if (origHost == null) {
             errorHandler.fail(sreq, 400, RejectReason.noHostHeader, null);
             return;
@@ -127,8 +140,10 @@ public class Proxy {
             sres.setStatusMessage(cres.statusMessage());
             MultiMap headers = cres.headers();
             copyEndToEndHeaders(headers, sres.headers());
-            sres.headers().add("keep-alive", keepAliveHeaderValue);
-            sres.headers().add("connection", "keep-alive");
+            if (!isHTTP2) {
+                sres.headers().add("keep-alive", keepAliveHeaderValue);
+                sres.headers().add("connection", "keep-alive");
+            }
             if (!headers.contains("content-length")) {
                 sres.setChunked(true);
             }
@@ -146,8 +161,7 @@ public class Proxy {
         creqh.set("X-Host", origHost);
         creqh.set("X-Forwarded-For", chost);
         creqh.set("X-Forwarded-Proto", isTls ? "https" : "http");
-        String transferEncoding = sreqh.get("transfer-encoding");
-        if (transferEncoding != null && transferEncoding.contains("chunked")) {
+        if (!sreqh.contains("content-length")) {
             creq.setChunked(true);
         }
         Pump reqPump = Pump.pump(sreq, creq);
