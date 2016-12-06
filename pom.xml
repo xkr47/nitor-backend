@@ -73,7 +73,7 @@
       <plugins>
         <plugin>
           <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.5.1</version>
+          <version>3.6.0</version>
           <configuration>
             <source>1.8</source>
             <target>1.8</target>
@@ -114,8 +114,11 @@
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <manifestEntries>
+                    <Main-Class>io.nitor.api.backend.NitorBackend</Main-Class>
+                    <!--
                     <Main-Class>io.vertx.core.Launcher</Main-Class>
-                    <Main-Verticle>io.nitor.api.Backend</Main-Verticle>
+                    <Main-Verticle>io.nitor.api.backend.NitorBackend</Main-Verticle>
+                    -->
                   </manifestEntries>
                 </transformer>
               </transformers>

@@ -12,6 +12,9 @@ import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import java.io.IOException;
+import java.nio.channels.Channel;
+import java.nio.channels.spi.SelectorProvider;
 import java.util.Arrays;
 import java.util.List;
 
@@ -24,6 +27,7 @@ import io.vertx.core.Launcher;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.net.JdkSSLEngineOptions;
 import io.vertx.core.net.OpenSSLEngineOptions;
 import io.vertx.core.net.PemKeyCertOptions;
@@ -42,8 +46,7 @@ public class NitorBackend extends AbstractVerticle
         "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
     );
 
-    public static void main(String... args)
-    {
+    public static void main(String... args) throws IOException {
         killProcessUsingPort(listenPort);
         if (getProperty("java.version", "").startsWith("9")) {
             setProperty("io.netty.noKeySetOptimization", "true");
@@ -123,8 +126,13 @@ public class NitorBackend extends AbstractVerticle
         }
 
         vertx.createHttpServer(httpOptions)
-            .requestHandler(router::accept)
+            .requestHandler(r -> filteredHandler(router, r))
             .listen(listenPort);
+    }
+
+    public void filteredHandler(Router router, HttpServerRequest request) {
+        request.response().putHeader("strict-transport-security", "max-age=31536000; includeSubDomains");
+        router.accept(request);
     }
 
     static String javaCipherNameToOpenSSLName(String name) {
