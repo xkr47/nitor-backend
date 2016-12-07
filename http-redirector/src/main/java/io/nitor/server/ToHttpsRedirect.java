@@ -1,4 +1,4 @@
-package io.nitor.api.backend;
+package io.nitor.server;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
