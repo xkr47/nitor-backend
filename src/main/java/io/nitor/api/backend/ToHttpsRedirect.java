@@ -21,7 +21,7 @@ public class ToHttpsRedirect {
         Channel inherited = SelectorProvider.provider().inheritedChannel();
         if (inherited == null || !(inherited instanceof ServerSocketChannel)) {
             err.println("Requires listen socket to be passed using inted protocol");
-            exit(1);
+            exit(2);
         }
         ServerSocketChannel listenSocket = (ServerSocketChannel) inherited;
         listenSocket.configureBlocking(true);
