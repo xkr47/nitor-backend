@@ -12,10 +12,12 @@
     <url>https://www.nitor.fi</url>
   </organization>
   <inceptionYear>2016</inceptionYear>
+  <description>Safe HTTP to HTTPS redirector</description>
   <licenses>
     <license>
-      <name>GNU General Public License (GPL)</name>
-      <url>http://www.gnu.org/licenses/gpl.txt</url>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+<!--      <distribution>repo</distribution> -->
     </license>
   </licenses>
   <properties>
@@ -89,8 +91,8 @@
           </execution>
         </executions>
         <configuration>
-          <license>Apache</license>
           <group>System Environment/Daemons</group>
+          <license>ASL 2.0</license>
           <mappings>
             <mapping>
               <directory>${install.dir}/${artifactId}</directory>
