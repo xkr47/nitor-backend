@@ -1,25 +1,5 @@
 package io.nitor.api.backend;
 
-import static com.nitorcreations.core.utils.KillProcess.killProcessUsingPort;
-import static io.vertx.core.http.ClientAuth.REQUEST;
-import static io.vertx.core.http.HttpVersion.HTTP_1_1;
-import static io.vertx.core.http.HttpVersion.HTTP_2;
-import static java.lang.Boolean.getBoolean;
-import static java.lang.Integer.getInteger;
-import static java.lang.System.getProperty;
-import static java.lang.System.setProperty;
-import static java.util.Arrays.asList;
-import static java.util.concurrent.TimeUnit.MINUTES;
-import static java.util.concurrent.TimeUnit.SECONDS;
-
-import java.io.IOException;
-import java.nio.channels.Channel;
-import java.nio.channels.spi.SelectorProvider;
-import java.util.Arrays;
-import java.util.List;
-
-import javax.net.ssl.SSLPeerUnverifiedException;
-
 import io.nitor.api.backend.Proxy.RejectReason;
 import io.nitor.api.backend.Proxy.Target;
 import io.vertx.core.AbstractVerticle;
@@ -33,6 +13,23 @@ import io.vertx.core.net.OpenSSLEngineOptions;
 import io.vertx.core.net.PemKeyCertOptions;
 import io.vertx.core.net.PemTrustOptions;
 import io.vertx.ext.web.Router;
+
+import javax.net.ssl.SSLPeerUnverifiedException;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+
+import static com.nitorcreations.core.utils.KillProcess.killProcessUsingPort;
+import static io.vertx.core.http.ClientAuth.REQUEST;
+import static io.vertx.core.http.HttpVersion.HTTP_1_1;
+import static io.vertx.core.http.HttpVersion.HTTP_2;
+import static java.lang.Boolean.getBoolean;
+import static java.lang.Integer.getInteger;
+import static java.lang.System.getProperty;
+import static java.lang.System.setProperty;
+import static java.util.Arrays.asList;
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class NitorBackend extends AbstractVerticle
 {
