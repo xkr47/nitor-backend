@@ -1,25 +1,27 @@
 package io.nitor.api.backend;
 
-import static java.util.Arrays.asList;
-
+import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.streams.Pump;
+import io.vertx.ext.web.RoutingContext;
 
 import java.time.Clock;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
+import static io.vertx.core.http.HttpVersion.HTTP_2;
+import static java.util.Arrays.asList;
+
 /**
  * Reverse HTTP proxy, ported to Java from https://github.com/xkr47/vhostproxy4/
  */
-public class Proxy {
+public class Proxy implements Handler<RoutingContext> {
 
     private final HttpClient client;
     private final TargetResolver targetResolver;
@@ -100,7 +102,10 @@ public class Proxy {
 
     static final AtomicLong requestId = new AtomicLong(Clock.systemUTC().millis());
 
-    public void handle(final HttpServerRequest sreq, final boolean isTls, final boolean isHTTP2) {
+    public void handle(RoutingContext routingContext) {
+        final HttpServerRequest sreq = routingContext.request();
+        final boolean isTls = "https".equals(routingContext.request().scheme());
+        final boolean isHTTP2 = routingContext.request().version() == HTTP_2;
         if (!sreq.headers().contains(requestIdHeader)) {
             String reqId = Long.toString(requestId.getAndIncrement());
             sreq.headers().add(requestIdHeader, reqId);
@@ -168,4 +173,5 @@ public class Proxy {
         sreq.endHandler(v -> creq.end());
         reqPump.start();
     }
+
 }

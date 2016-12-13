@@ -22,7 +22,6 @@ import java.util.List;
 import static com.nitorcreations.core.utils.KillProcess.killProcessUsingPort;
 import static io.vertx.core.http.ClientAuth.REQUEST;
 import static io.vertx.core.http.HttpVersion.HTTP_1_1;
-import static io.vertx.core.http.HttpVersion.HTTP_2;
 import static java.lang.Boolean.getBoolean;
 import static java.lang.Integer.getInteger;
 import static java.lang.System.getProperty;
@@ -86,7 +85,7 @@ public class NitorBackend extends AbstractVerticle
                 request.response().end(statusMsg);
             }
         });
-        router.get("/proxy").handler(routingContext -> proxy.handle(routingContext.request(), "https".equals(routingContext.request().scheme()), routingContext.request().version() == HTTP_2));
+        router.get("/proxy").handler(proxy::handle);
 
         boolean useNativeOpenSsl = getBoolean("openssl");
 
