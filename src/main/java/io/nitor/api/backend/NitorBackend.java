@@ -75,7 +75,7 @@ public class NitorBackend extends AbstractVerticle
                 .setProtocolVersion(HTTP_1_1)
                 .setTryUseCompression(false));
         Proxy proxy = new Proxy(client,
-                (request, isTls) -> new Target("example.org", 80, "/", "example.org"),
+                (routingContext, targetHandler) -> targetHandler.handle(new Target("example.org", 80, "/", "example.org")),
                 (request, status, reason, detail) -> {
             if (!request.response().headWritten()) {
                 String statusMsg =

@@ -28,7 +28,11 @@ public class Proxy implements Handler<RoutingContext> {
     private final ErrorHandler errorHandler;
 
     public interface TargetResolver {
-        Target resolveNextHop(HttpServerRequest request, boolean isTls);
+        /**
+         * @param routingContext the routingContext to resolvee target for
+         * @param targetHandler the handler to notify with the target, unless the request has already been handled, in which case it must not be called.
+         */
+        void resolveNextHop(RoutingContext routingContext, Handler<Target> targetHandler);
     }
 
     public interface ErrorHandler {
@@ -47,7 +51,8 @@ public class Proxy implements Handler<RoutingContext> {
         public String uri;
         public String hostHeader;
 
-        public Target() {}
+        public Target() {
+        }
 
         public Target(String socketHost, int socketPort, String uri, String hostHeader) {
             this.socketHost = socketHost;
@@ -78,7 +83,7 @@ public class Proxy implements Handler<RoutingContext> {
             ":path",
             ":scheme",
             ":authority"
-        ));
+    ));
 
     static final Pattern connectionHeaderValueRE = Pattern.compile("\\s*,[\\s,]*+"); // from RFC2616
 
@@ -118,60 +123,58 @@ public class Proxy implements Handler<RoutingContext> {
             sres.headers().add("connection", "keep-alive");
         }
         sreq.exceptionHandler(t -> errorHandler.fail(sreq, 500, RejectReason.incomingRequestFail, t.getMessage()));
-        Target nextHop = targetResolver.resolveNextHop(sreq, isTls);
-
-        if (nextHop == null) {
-            // in this case the resolveNextHop takes care of sending the response
-            return;
-        }
-
-        MultiMap sreqh = sreq.headers();
-        String origHost = null;
-        if (isHTTP2) {
-            origHost = sreqh.get(":authority");
-        }
-        if (origHost == null) {
-            origHost = sreqh.get("Host");
-        }
-        if (origHost == null) {
-            errorHandler.fail(sreq, 400, RejectReason.noHostHeader, null);
-            return;
-        }
-        HttpClientRequest creq = client.request(sreq.method(), nextHop.socketPort, nextHop.socketHost, nextHop.uri);
-        creq.handler(cres -> {
-            cres.exceptionHandler(t -> errorHandler.fail(sreq, 502, RejectReason.incomingResponseFail, t.getMessage()));
-
-            sres.setStatusCode(cres.statusCode());
-            sres.setStatusMessage(cres.statusMessage());
-            MultiMap headers = cres.headers();
-            copyEndToEndHeaders(headers, sres.headers());
-            if (!isHTTP2) {
-                sres.headers().add("keep-alive", keepAliveHeaderValue);
-                sres.headers().add("connection", "keep-alive");
-            }
-            if (!headers.contains("content-length")) {
-                sres.setChunked(true);
+        targetResolver.resolveNextHop(routingContext, nextHop -> {
+            if (nextHop == null) {
+                throw new NullPointerException("nextHop must not be null");
             }
 
-            Pump resPump = Pump.pump(cres, sres);
-            cres.endHandler(v -> sres.end());
-            resPump.start();
+            MultiMap sreqh = sreq.headers();
+            String origHost = null;
+            if (isHTTP2) {
+                origHost = sreqh.get(":authority");
+            }
+            if (origHost == null) {
+                origHost = sreqh.get("Host");
+            }
+            if (origHost == null) {
+                errorHandler.fail(sreq, 400, RejectReason.noHostHeader, null);
+                return;
+            }
+            HttpClientRequest creq = client.request(sreq.method(), nextHop.socketPort, nextHop.socketHost, nextHop.uri);
+            creq.handler(cres -> {
+                cres.exceptionHandler(t -> errorHandler.fail(sreq, 502, RejectReason.incomingResponseFail, t.getMessage()));
+
+                sres.setStatusCode(cres.statusCode());
+                sres.setStatusMessage(cres.statusMessage());
+                MultiMap headers = cres.headers();
+                copyEndToEndHeaders(headers, sres.headers());
+                if (!isHTTP2) {
+                    sres.headers().add("keep-alive", keepAliveHeaderValue);
+                    sres.headers().add("connection", "keep-alive");
+                }
+                if (!headers.contains("content-length")) {
+                    sres.setChunked(true);
+                }
+
+                Pump resPump = Pump.pump(cres, sres);
+                cres.endHandler(v -> sres.end());
+                resPump.start();
+            });
+            creq.exceptionHandler(t -> {
+                errorHandler.fail(sreq, 502, RejectReason.outgoingRequestFail, t.getMessage());
+            });
+            MultiMap creqh = creq.headers();
+            copyEndToEndHeaders(sreqh, creqh);
+            creqh.set("Host", nextHop.hostHeader);
+            creqh.set("X-Host", origHost);
+            creqh.set("X-Forwarded-For", chost);
+            creqh.set("X-Forwarded-Proto", isTls ? "https" : "http");
+            if (!sreqh.contains("content-length")) {
+                creq.setChunked(true);
+            }
+            Pump reqPump = Pump.pump(sreq, creq);
+            sreq.endHandler(v -> creq.end());
+            reqPump.start();
         });
-        creq.exceptionHandler(t -> {
-            errorHandler.fail(sreq, 502, RejectReason.outgoingRequestFail, t.getMessage());
-        });
-        MultiMap creqh = creq.headers();
-        copyEndToEndHeaders(sreqh, creqh);
-        creqh.set("Host", nextHop.hostHeader);
-        creqh.set("X-Host", origHost);
-        creqh.set("X-Forwarded-For", chost);
-        creqh.set("X-Forwarded-Proto", isTls ? "https" : "http");
-        if (!sreqh.contains("content-length")) {
-            creq.setChunked(true);
-        }
-        Pump reqPump = Pump.pump(sreq, creq);
-        sreq.endHandler(v -> creq.end());
-        reqPump.start();
     }
-
 }
