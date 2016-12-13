@@ -1,5 +1,6 @@
 package io.nitor.api.backend;
 
+import io.nitor.api.backend.Proxy.ProxyException;
 import io.nitor.api.backend.Proxy.RejectReason;
 import io.nitor.api.backend.Proxy.Target;
 import io.vertx.core.AbstractVerticle;
@@ -75,17 +76,23 @@ public class NitorBackend extends AbstractVerticle
                 .setProtocolVersion(HTTP_1_1)
                 .setTryUseCompression(false));
         Proxy proxy = new Proxy(client,
-                (routingContext, targetHandler) -> targetHandler.handle(new Target("example.org", 80, "/", "example.org")),
-                (request, status, reason, detail) -> {
-            if (!request.response().headWritten()) {
-                String statusMsg =
-                    detail != null?detail:reason == RejectReason.noHostHeader?"Exhausted resources while trying to extract Host header from the request":"";
-                request.response().setStatusCode(status);
-                request.response().headers().set("content-type", "text/plain;charset=UTF-8");
-                request.response().end(statusMsg);
+                (routingContext, targetHandler) -> targetHandler.handle(new Target("example.org", 80, "/", "example.org")));
+        router.get("/proxy").handler(proxy::handle);
+        router.get("/proxy").handler(routingContext -> {
+            if (routingContext.failed()) {
+                ProxyException ex = (ProxyException) routingContext.failure();
+                if (!routingContext.response().headWritten()) {
+                    String statusMsg =
+                            ex.getCause() != null ? ex.getCause().getMessage() :
+                                    ex.reason == RejectReason.noHostHeader ? "Exhausted resources while trying to extract Host header from the request" : "";
+                    routingContext.response().setStatusCode(ex.statusCode);
+                    routingContext.response().headers().set("content-type", "text/plain;charset=UTF-8");
+                    routingContext.response().end(statusMsg);
+                }
+            } else {
+                routingContext.next();
             }
         });
-        router.get("/proxy").handler(proxy::handle);
 
         boolean useNativeOpenSsl = getBoolean("openssl");
 

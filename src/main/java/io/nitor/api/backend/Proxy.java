@@ -2,6 +2,7 @@ package io.nitor.api.backend;
 
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
+import io.vertx.core.VertxException;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpServerRequest;
@@ -25,24 +26,25 @@ public class Proxy implements Handler<RoutingContext> {
 
     private final HttpClient client;
     private final TargetResolver targetResolver;
-    private final ErrorHandler errorHandler;
 
     public interface TargetResolver {
         /**
-         * @param routingContext the routingContext to resolvee target for
-         * @param targetHandler the handler to notify with the target, unless the request has already been handled, in which case it must not be called.
+         * Resole the next hop to go to, if any. Should eventually call exactly one of these:
+         * <ul>
+         * <li><tt>targetHandler.handle(target);</tt></li>
+         * <li><tt>routingContext.next();</tt></li>
+         * <li><tt>routingContext.fail(...);</tt></li>
+         * </ul>
+         *
+         * @param routingContext the routingContext to resolve target for
+         * @param targetHandler  the handler to notify with the target, unless the request has already been handled, in which case it must not be called.
          */
         void resolveNextHop(RoutingContext routingContext, Handler<Target> targetHandler);
     }
 
-    public interface ErrorHandler {
-        void fail(HttpServerRequest sreq, int status, RejectReason reason, String detail);
-    }
-
-    public Proxy(HttpClient client, TargetResolver targetResolver, ErrorHandler errorHandler) {
+    public Proxy(HttpClient client, TargetResolver targetResolver) {
         this.client = client;
         this.targetResolver = targetResolver;
-        this.errorHandler = errorHandler;
     }
 
     public static class Target {
@@ -59,6 +61,17 @@ public class Proxy implements Handler<RoutingContext> {
             this.socketPort = socketPort;
             this.uri = uri;
             this.hostHeader = hostHeader;
+        }
+    }
+
+    public static class ProxyException extends VertxException {
+        public final int statusCode;
+        public final RejectReason reason;
+
+        public ProxyException(int statusCode, Proxy.RejectReason reason, Throwable t) {
+            super("Status: " + statusCode + ", reason: " + reason, t);
+            this.statusCode = statusCode;
+            this.reason = reason;
         }
     }
 
@@ -122,7 +135,7 @@ public class Proxy implements Handler<RoutingContext> {
             sres.headers().add("keep-alive", keepAliveHeaderValue);
             sres.headers().add("connection", "keep-alive");
         }
-        sreq.exceptionHandler(t -> errorHandler.fail(sreq, 500, RejectReason.incomingRequestFail, t.getMessage()));
+        sreq.exceptionHandler(t -> routingContext.fail(new ProxyException(500, RejectReason.incomingRequestFail, t)));
         targetResolver.resolveNextHop(routingContext, nextHop -> {
             if (nextHop == null) {
                 throw new NullPointerException("nextHop must not be null");
@@ -137,12 +150,12 @@ public class Proxy implements Handler<RoutingContext> {
                 origHost = sreqh.get("Host");
             }
             if (origHost == null) {
-                errorHandler.fail(sreq, 400, RejectReason.noHostHeader, null);
+                routingContext.fail(new ProxyException(400, RejectReason.noHostHeader, null));
                 return;
             }
             HttpClientRequest creq = client.request(sreq.method(), nextHop.socketPort, nextHop.socketHost, nextHop.uri);
             creq.handler(cres -> {
-                cres.exceptionHandler(t -> errorHandler.fail(sreq, 502, RejectReason.incomingResponseFail, t.getMessage()));
+                cres.exceptionHandler(t -> routingContext.fail(new ProxyException(502, RejectReason.incomingResponseFail, t)));
 
                 sres.setStatusCode(cres.statusCode());
                 sres.setStatusMessage(cres.statusMessage());
@@ -161,7 +174,7 @@ public class Proxy implements Handler<RoutingContext> {
                 resPump.start();
             });
             creq.exceptionHandler(t -> {
-                errorHandler.fail(sreq, 502, RejectReason.outgoingRequestFail, t.getMessage());
+                routingContext.fail(new ProxyException(502, RejectReason.outgoingRequestFail, t));
             });
             MultiMap creqh = creq.headers();
             copyEndToEndHeaders(sreqh, creqh);
