@@ -8,7 +8,6 @@ import io.vertx.core.Launcher;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpServerOptions;
-import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.net.JdkSSLEngineOptions;
 import io.vertx.core.net.OpenSSLEngineOptions;
 import io.vertx.core.net.PemKeyCertOptions;
@@ -55,6 +54,10 @@ public class NitorBackend extends AbstractVerticle
     public void start() {
         Router router = Router.router(vertx);
 
+        router.route().handler(routingContext -> {
+            routingContext.response().putHeader("strict-transport-security", "max-age=31536000; includeSubDomains");
+            routingContext.next();
+        });
         router.get("/healthCheck").handler(routingContext -> {
            routingContext.response().sendFile("pom.xml");
         });
@@ -129,13 +132,8 @@ public class NitorBackend extends AbstractVerticle
         }
 
         vertx.createHttpServer(httpOptions)
-            .requestHandler(r -> filteredHandler(router, r))
+            .requestHandler(router::accept)
             .listen(listenPort);
-    }
-
-    public void filteredHandler(Router router, HttpServerRequest request) {
-        request.response().putHeader("strict-transport-security", "max-age=31536000; includeSubDomains");
-        router.accept(request);
     }
 
     static String javaCipherNameToOpenSSLName(String name) {
