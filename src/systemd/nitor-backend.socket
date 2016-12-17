@@ -1,0 +1,12 @@
+[Unit]
+Description=Nitor backend service socket
+
+[Socket]
+ListenStream=443
+NoDelay=true
+DeferAcceptSec=5
+Backlog=16
+
+[Install]
+WantedBy=sockets.target
+

@@ -1,0 +1,34 @@
+[Unit]
+Description=Nitor backend service
+After=network.target
+
+[Service]
+User=nobody
+Group=hugepages
+DynamicUser=yes
+
+StandardInput=socket
+WorkingDirectory=/opt/nitor/backend
+ExecStart=/usr/bin/java -Xmx512M -XX:+UseG1GC -XX:+UseLargePages -Dvertx.cacheDirBase=/run/backend -jar /opt/nitor/backend/backend-1.0.0-fat.jar
+Restart=always
+RestartSec=10
+
+# process limits
+LimitNOFILE=10240
+LimitNPROC=10240
+LimitMEMLOCK=4G
+
+# stricter security
+CapabilityBoundingSet=
+ProtectSystem=full
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateUsers=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target
+

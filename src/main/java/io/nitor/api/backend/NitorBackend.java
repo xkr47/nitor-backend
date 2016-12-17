@@ -15,7 +15,6 @@ import io.vertx.core.net.PemTrustOptions;
 import io.vertx.ext.web.Router;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -24,6 +23,7 @@ import static io.vertx.core.http.ClientAuth.REQUEST;
 import static io.vertx.core.http.HttpVersion.HTTP_1_1;
 import static java.lang.Boolean.getBoolean;
 import static java.lang.Integer.getInteger;
+import static java.lang.System.exit;
 import static java.lang.System.getProperty;
 import static java.lang.System.setProperty;
 import static java.util.Arrays.asList;
@@ -42,12 +42,20 @@ public class NitorBackend extends AbstractVerticle
         "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
     );
 
-    public static void main(String... args) throws IOException {
-        killProcessUsingPort(listenPort);
+    public static void main(String... args) throws Exception {
+        setProperty("java.nio.channels.spi.SelectorProvider", InheritedChannelSelectorProvider.class.getName());
+        if (!InheritedChannelSelectorProvider.hasInheritedChannel()) {
+            killProcessUsingPort(listenPort);
+        }
         if (getProperty("java.version", "").startsWith("9")) {
             setProperty("io.netty.noKeySetOptimization", "true");
         }
-        Launcher.main(new String[] { "run", NitorBackend.class.getName(), "-conf", "conf.json" });
+        try {
+            Launcher.main(new String[]{"run", NitorBackend.class.getName(), "-conf", "conf.json"});
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            exit(3);
+        }
     }
 
     @Override
