@@ -64,6 +64,7 @@ public class Proxy implements Handler<RoutingContext> {
         }
     }
 
+    @SuppressWarnings("serial")
     public static class ProxyException extends VertxException {
         public final int statusCode;
         public final RejectReason reason;
