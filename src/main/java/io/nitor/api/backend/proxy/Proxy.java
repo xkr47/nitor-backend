@@ -1,4 +1,4 @@
-package io.nitor.api.backend;
+package io.nitor.api.backend.proxy;
 
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
@@ -60,7 +60,7 @@ public class Proxy implements Handler<RoutingContext> {
             this.socketHost = socketHost;
             this.socketPort = socketPort;
             this.uri = uri;
-            this.hostHeader = hostHeader;
+            this.hostHeader = hostHeader != null ? hostHeader : socketHost;
         }
     }
 

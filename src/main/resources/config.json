@@ -1,0 +1,10 @@
+{
+  "useNativeOpenSsl": false,
+  "proxy": {
+    "route": "/proxy",
+    "host": "example.org",
+    "port": 80,
+    "path": "/",
+    "hostHeader": "example.org"
+  }
+}

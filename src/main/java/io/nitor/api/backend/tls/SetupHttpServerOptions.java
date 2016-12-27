@@ -1,6 +1,7 @@
 package io.nitor.api.backend.tls;
 
 import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.JdkSSLEngineOptions;
 import io.vertx.core.net.OpenSSLEngineOptions;
 import io.vertx.core.net.PemKeyCertOptions;
@@ -21,7 +22,7 @@ public class SetupHttpServerOptions {
             "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
     );
 
-    public static HttpServerOptions createHttpServerOptions(boolean useNativeOpenSsl) {
+    public static HttpServerOptions createHttpServerOptions(JsonObject config) {
         HttpServerOptions httpOptions = new HttpServerOptions()
                 // basic TCP/HTTP options
                 .setReuseAddress(true)
@@ -41,7 +42,7 @@ public class SetupHttpServerOptions {
                 .setTrustOptions(new PemTrustOptions()
                         .addCertPath("certs/client.chain")
                 );
-        if (useNativeOpenSsl) {
+        if (config.getBoolean("useNativeOpenSsl")) {
             httpOptions
                     .setUseAlpn(true)
                     .setSslEngineOptions(new OpenSSLEngineOptions());
