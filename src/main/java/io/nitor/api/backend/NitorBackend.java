@@ -1,10 +1,13 @@
 package io.nitor.api.backend;
 
+import io.nitor.api.backend.auth.SimpleConfigAuthProvider;
 import io.nitor.api.backend.proxy.SetupProxy;
 import io.nitor.api.backend.tls.SetupHttpServerOptions;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
+import io.vertx.ext.web.handler.AuthHandler;
+import io.vertx.ext.web.handler.BasicAuthHandler;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
 import java.util.Arrays;
@@ -56,6 +59,12 @@ public class NitorBackend extends AbstractVerticle
             }
             routingContext.response().setChunked(true).write(resp).end();
         });
+
+        JsonObject basicAuth = config().getJsonObject("basicAuth");
+        if (basicAuth != null) {
+            AuthHandler basicAuthHandler = BasicAuthHandler.create(new SimpleConfigAuthProvider(basicAuth.getJsonObject("users")), basicAuth.getString("realm", "nitor"));
+            router.route(basicAuth.getString("path", "/*")).handler(basicAuthHandler);
+        }
 
         JsonObject proxyConf = config().getJsonObject("proxy");
         if (proxyConf != null) {

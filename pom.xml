@@ -4,9 +4,6 @@
   <groupId>io.nitor.api</groupId>
   <artifactId>backend</artifactId>
   <version>1.0.0</version>
-  <prerequisites>
-    <maven>3.3.9</maven>
-  </prerequisites>
   <organization>
     <name>Nitor Creations</name>
     <url>https://www.nitor.fi</url>
@@ -29,9 +26,8 @@
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
-      <artifactId>vertx-codegen</artifactId>
+      <artifactId>vertx-auth-shiro</artifactId>
       <version>${vertx.version}</version>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>io.netty</groupId>

@@ -1,5 +1,13 @@
 {
   "useNativeOpenSsl": false,
+  "basicAuth": {
+    "path": "/*",
+    "real": "nitor",
+    "users": {
+      "test": "test",
+      "admin": "nimda"
+    }
+  },
   "proxy": {
     "route": "/proxy",
     "host": "example.org",
