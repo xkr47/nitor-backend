@@ -83,6 +83,11 @@ public class NitorBackend extends AbstractVerticle
             int statusCode = routingContext.statusCode();
             Throwable t = routingContext.failure();
             logger.info("Handling failure statusCode=" + statusCode, t);
+            if (routingContext.response().headWritten()) {
+                routingContext.response().end();
+                routingContext.request().connection().close();
+                return;
+            }
             if (t != null) {
                 if (t instanceof ProxyException) {
                     statusCode = ((ProxyException) t).statusCode;
