@@ -1,6 +1,7 @@
 package io.nitor.api.backend;
 
 import io.nitor.api.backend.auth.SimpleConfigAuthProvider;
+import io.nitor.api.backend.proxy.Proxy.ProxyException;
 import io.nitor.api.backend.proxy.SetupProxy;
 import io.nitor.api.backend.tls.SetupHttpServerOptions;
 import io.vertx.core.AbstractVerticle;
@@ -17,9 +18,7 @@ import java.util.stream.Stream;
 
 import static com.nitorcreations.core.utils.KillProcess.killProcessUsingPort;
 import static java.lang.Integer.getInteger;
-import static java.lang.System.exit;
-import static java.lang.System.getProperty;
-import static java.lang.System.setProperty;
+import static java.lang.System.*;
 
 public class NitorBackend extends AbstractVerticle
 {
@@ -78,6 +77,23 @@ public class NitorBackend extends AbstractVerticle
         if (proxyConf != null) {
             SetupProxy.setupProxy(vertx, router, proxyConf);
         }
+
+        router.route().failureHandler(routingContext -> {
+            String error = "ERROR";
+            int statusCode = routingContext.statusCode();
+            Throwable t = routingContext.failure();
+            logger.info("Handling failure statusCode=" + statusCode, t);
+            if (t != null) {
+                if (t instanceof ProxyException) {
+                    statusCode = ((ProxyException) t).statusCode;
+                }
+                error = "ERROR: " + t.toString();
+            }
+            routingContext.response().setStatusCode(statusCode != -1 ? statusCode : 500);
+            routingContext.response().headers().set("Content-Type", "text/plain; charset=UTF-8");
+            routingContext.response().headers().set("Content-Length", Integer.toString(error.length()));
+            routingContext.response().end(error);
+        });
 
         vertx.createHttpServer(SetupHttpServerOptions.createHttpServerOptions(config()))
                 .requestHandler(router::accept)
