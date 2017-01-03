@@ -157,9 +157,14 @@ public class Proxy implements Handler<RoutingContext> {
                 routingContext.fail(new ProxyException(400, RejectReason.noHostHeader, null));
                 return;
             }
+            final boolean[] aborted = { false };
             HttpClientRequest creq = client.request(sreq.method(), nextHop.socketPort, nextHop.socketHost, nextHop.uri);
             creq.handler(cres -> {
-                cres.exceptionHandler(t -> routingContext.fail(new ProxyException(502, RejectReason.incomingResponseFail, t)));
+                cres.exceptionHandler(t -> {
+                    if (!aborted[0]) {
+                        routingContext.fail(new ProxyException(502, RejectReason.incomingResponseFail, t));
+                    }
+                });
 
                 sres.setStatusCode(cres.statusCode());
                 sres.setStatusMessage(cres.statusMessage());
@@ -178,7 +183,9 @@ public class Proxy implements Handler<RoutingContext> {
                 resPump.start();
             });
             creq.exceptionHandler(t -> {
-                routingContext.fail(new ProxyException(502, RejectReason.outgoingRequestFail, t));
+                if (!aborted[0]) {
+                    routingContext.fail(new ProxyException(502, RejectReason.outgoingRequestFail, t));
+                }
             });
             MultiMap creqh = creq.headers();
             copyEndToEndHeaders(sreqh, creqh);
@@ -191,6 +198,11 @@ public class Proxy implements Handler<RoutingContext> {
             }
             Pump reqPump = Pump.pump(sreq, creq);
             sreq.endHandler(v -> creq.end());
+            sres.closeHandler(v -> {
+                aborted[0] = true;
+                creq.connection().close();
+                // TODO do we want to report that server prematurely closed connection?
+            });
             reqPump.start();
         });
     }
