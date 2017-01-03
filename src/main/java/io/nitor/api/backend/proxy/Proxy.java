@@ -56,11 +56,14 @@ public class Proxy implements Handler<RoutingContext> {
         public Target() {
         }
 
+        /**
+         * @param hostHeader can be null, in which case socketHost &amp; socketPort is used
+         */
         public Target(String socketHost, int socketPort, String uri, String hostHeader) {
             this.socketHost = socketHost;
             this.socketPort = socketPort;
             this.uri = uri;
-            this.hostHeader = hostHeader != null ? hostHeader : socketHost;
+            this.hostHeader = hostHeader;
         }
     }
 
@@ -179,7 +182,7 @@ public class Proxy implements Handler<RoutingContext> {
             });
             MultiMap creqh = creq.headers();
             copyEndToEndHeaders(sreqh, creqh);
-            creqh.set("Host", nextHop.hostHeader);
+            creq.setHost(nextHop.hostHeader);
             creqh.set("X-Host", origHost);
             creqh.set("X-Forwarded-For", chost);
             creqh.set("X-Forwarded-Proto", isTls ? "https" : "http");
