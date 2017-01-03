@@ -5,6 +5,8 @@ import io.nitor.api.backend.proxy.SetupProxy;
 import io.nitor.api.backend.tls.SetupHttpServerOptions;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.AuthHandler;
 import io.vertx.ext.web.handler.BasicAuthHandler;
@@ -39,8 +41,14 @@ public class NitorBackend extends AbstractVerticle
         }
     }
 
+    private final Logger logger = LoggerFactory.getLogger(NitorBackend.class);
+
     @Override
     public void start() {
+        vertx.exceptionHandler(e -> {
+           logger.error("Fallback exception handler got", e);
+        });
+
         Router router = Router.router(vertx);
 
         router.route().handler(routingContext -> {
