@@ -1,5 +1,10 @@
 {
   "useNativeOpenSsl": false,
+  "tls": {
+    "serverKey": "certs/localhost.key.clear",
+    "serverCert": "certs/localhost.crt",
+    "clientChain": "certs/client.chain"
+  },
   "basicAuth": {
     "path": "/*",
     "real": "nitor",

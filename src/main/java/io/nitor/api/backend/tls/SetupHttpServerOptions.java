@@ -23,6 +23,7 @@ public class SetupHttpServerOptions {
     );
 
     public static HttpServerOptions createHttpServerOptions(JsonObject config) {
+        JsonObject tls = config.getJsonObject("tls");
         HttpServerOptions httpOptions = new HttpServerOptions()
                 // basic TCP/HTTP options
                 .setReuseAddress(true)
@@ -32,16 +33,18 @@ public class SetupHttpServerOptions {
                 .setSsl(true)
                 // server side certificate
                 .setPemKeyCertOptions(new PemKeyCertOptions()
-                        .setKeyPath("certs/localhost.key.clear")
-                        .setCertPath("certs/localhost.crt"))
+                        .setKeyPath(tls.getString("serverKey"))
+                        .setCertPath(tls.getString("serverCert")))
                 // TLS tuning
                 .addEnabledSecureTransportProtocol("TLSv1.2")
-                .addEnabledSecureTransportProtocol("TLSv1.3")
-                // client side certificate
-                .setClientAuth(REQUEST)
-                .setTrustOptions(new PemTrustOptions()
-                        .addCertPath("certs/client.chain")
-                );
+                .addEnabledSecureTransportProtocol("TLSv1.3");
+        if (tls.getString("clientChain") != null) {
+            // client side certificate
+                httpOptions.setClientAuth(REQUEST)
+                    .setTrustOptions(new PemTrustOptions()
+                            .addCertPath(tls.getString("clientChain"))
+                    );
+        }
         if (config.getBoolean("useNativeOpenSsl")) {
             httpOptions
                     .setUseAlpn(true)
