@@ -20,8 +20,7 @@
         </RollingRandomAccessFile>
     </Appenders>
     <Loggers>
-        <AsyncLogger name="io.nitor" level="trace">
-        </AsyncLogger>
+        <AsyncLogger name="io.nitor" level="trace"/>
         <AsyncRoot level="info">
             <AppenderRef ref="CONSOLE"/>
             <AppenderRef ref="FILE"/>
