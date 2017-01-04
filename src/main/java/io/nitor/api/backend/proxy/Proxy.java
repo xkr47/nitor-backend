@@ -193,7 +193,7 @@ public class Proxy implements Handler<RoutingContext> {
             creqh.set("X-Host", origHost);
             creqh.set("X-Forwarded-For", chost);
             creqh.set("X-Forwarded-Proto", isTls ? "https" : "http");
-            if (!sreqh.contains("content-length")) {
+            if (sreqh.getAll("transfer-encoding").stream().filter(v -> v.equals("chunked")).findFirst().isPresent()) {
                 creq.setChunked(true);
             }
             Pump reqPump = Pump.pump(sreq, creq);
