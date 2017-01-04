@@ -6,11 +6,11 @@ import io.nitor.api.backend.proxy.SetupProxy;
 import io.nitor.api.backend.tls.SetupHttpServerOptions;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.AuthHandler;
 import io.vertx.ext.web.handler.BasicAuthHandler;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
 import java.util.Arrays;
@@ -23,8 +23,10 @@ import static java.lang.System.*;
 public class NitorBackend extends AbstractVerticle
 {
     private static final int listenPort = getInteger("port", 8443);
+    private static Logger logger;
 
     public static void main(String... args) throws Exception {
+        setupLogging();
         setProperty("java.nio.channels.spi.SelectorProvider", InheritedChannelSelectorProvider.class.getName());
         if (!InheritedChannelSelectorProvider.hasInheritedChannel()) {
             killProcessUsingPort(listenPort);
@@ -40,7 +42,11 @@ public class NitorBackend extends AbstractVerticle
         }
     }
 
-    private final Logger logger = LoggerFactory.getLogger(NitorBackend.class);
+    private static void setupLogging() {
+        setProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager");
+        setProperty("vertx.logger-delegate-factory-class-name", "io.vertx.core.logging.Log4j2LogDelegateFactory");
+        logger = LogManager.getLogger(NitorBackend.class);
+    }
 
     @Override
     public void start() {
