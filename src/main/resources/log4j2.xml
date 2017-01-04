@@ -2,7 +2,7 @@
 <Configuration>
     <Appenders>
         <Console name="CONSOLE" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d %highlight{%-5p}%highlight{ %c{1.} [%t] %m}{FATAL=bright red, ERROR=bright red, WARN=bright yellow, INFO=Normal, DEBUG=Normal, TRACE=Normal}%n%style{%rEx}{bright,green}"/>
+            <PatternLayout pattern="%style{%d}{bright,blue} %highlight{%-5p}%highlight{ %c{1.} [%t] %m%n%rEx}{FATAL=bright red, ERROR=bright red, WARN=bright yellow, INFO=Normal, DEBUG=Normal, TRACE=Normal}"/>
         </Console>
         <RollingRandomAccessFile name="FILE"
                                  fileName="vertx.log"
