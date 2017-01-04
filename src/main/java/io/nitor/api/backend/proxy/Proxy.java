@@ -83,6 +83,7 @@ public class Proxy implements Handler<RoutingContext> {
         incomingRequestFail,
         outgoingRequestFail,
         incomingResponseFail,
+        outgoingResponseFail,
         noHostHeader,
     }
 
@@ -201,7 +202,7 @@ public class Proxy implements Handler<RoutingContext> {
             sres.closeHandler(v -> {
                 aborted[0] = true;
                 creq.connection().close();
-                // TODO do we want to report that server prematurely closed connection?
+                routingContext.fail(new ProxyException(0, RejectReason.outgoingResponseFail, null));
             });
             reqPump.start();
         });
