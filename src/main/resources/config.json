@@ -1,6 +1,7 @@
 {
   "useNativeOpenSsl": false,
   "tls": {
+    "http2": true,
     "serverKey": "certs/localhost.key.clear",
     "serverCert": "certs/localhost.crt",
     "clientChain": "certs/client.chain"
