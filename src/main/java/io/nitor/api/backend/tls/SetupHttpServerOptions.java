@@ -41,14 +41,15 @@ public class SetupHttpServerOptions {
                 // TLS tuning
                 .addEnabledSecureTransportProtocol("TLSv1.2")
                 .addEnabledSecureTransportProtocol("TLSv1.3");
-        if (!tls.getBoolean("http2", true)) {
+        if (!config.getBoolean("http2", true)) {
             httpOptions.setAlpnVersions(asList(HTTP_1_1));
         }
-        if (tls.getString("clientChain") != null) {
+        JsonObject clientAuth = config.getJsonObject("clientAuth");
+        if (clientAuth != null && clientAuth.getString("clientChain") != null) {
             // client side certificate
                 httpOptions.setClientAuth(REQUEST)
                     .setTrustOptions(new PemTrustOptions()
-                            .addCertPath(tls.getString("clientChain"))
+                            .addCertPath(clientAuth.getString("clientChain"))
                     );
         }
         if (config.getBoolean("useNativeOpenSsl")) {

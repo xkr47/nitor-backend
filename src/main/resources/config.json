@@ -1,9 +1,12 @@
 {
   "useNativeOpenSsl": false,
+  "http2": true,
   "tls": {
-    "http2": true,
     "serverKey": "certs/localhost.key.clear",
     "serverCert": "certs/localhost.crt",
+  },
+  "clientAuth": {
+    "path": "/*",
     "clientChain": "certs/client.chain"
   },
   "basicAuth": {
