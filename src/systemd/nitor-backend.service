@@ -4,19 +4,21 @@ After=network.target
 
 [Service]
 User=nobody
-Group=hugepages
+Group=nobody
+# todo create group hugepages and with rights to use hugepages
 DynamicUser=yes
 
 StandardInput=socket
-WorkingDirectory=/opt/nitor/backend
-ExecStart=/usr/bin/java -Xmx512M -XX:+UseG1GC -XX:+UseLargePages -Dvertx.cacheDirBase=/run/backend -jar ${install.dir}/${artifactId}/${project.build.finalName}.jar
+WorkingDirectory=${install.dir}/${artifactId}
+RuntimeDirectory=backend
+ExecStart=/usr/bin/java -Xmx512M -XX:+UseG1GC -XX:+UseLargePages -Dvertx.cacheDirBase=/run/backend -jar ${install.dir}/${artifactId}/${project.build.finalName}.jar -conf ${install.dir}/${artifactId}/config.json
 Restart=always
 RestartSec=10
 
 # process limits
 LimitNOFILE=10240
 LimitNPROC=10240
-LimitMEMLOCK=4G
+LimitMEMLOCK=infinity
 
 # stricter security
 CapabilityBoundingSet=
