@@ -1,6 +1,7 @@
 package io.nitor.api.backend.tls;
 
 import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.http.HttpVersion;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.JdkSSLEngineOptions;
 import io.vertx.core.net.OpenSSLEngineOptions;
@@ -10,6 +11,8 @@ import io.vertx.core.net.PemTrustOptions;
 import java.util.List;
 
 import static io.vertx.core.http.ClientAuth.REQUEST;
+import static io.vertx.core.http.HttpVersion.HTTP_1_1;
+import static io.vertx.core.http.HttpVersion.HTTP_2;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
@@ -29,7 +32,6 @@ public class SetupHttpServerOptions {
                 .setReuseAddress(true)
                 .setCompressionSupported(true)
                 .setIdleTimeout((int) MINUTES.toSeconds(10))
-                // TLS + HTTP/2
                 .setSsl(true)
                 // server side certificate
                 .setPemKeyCertOptions(new PemKeyCertOptions()
@@ -38,6 +40,11 @@ public class SetupHttpServerOptions {
                 // TLS tuning
                 .addEnabledSecureTransportProtocol("TLSv1.2")
                 .addEnabledSecureTransportProtocol("TLSv1.3");
+        if (tls.getBoolean("http2", true)) {
+            httpOptions.setAlpnVersions(asList(HTTP_1_1, HTTP_2));
+        } else {
+            httpOptions.setAlpnVersions(asList(HTTP_1_1));
+        }
         if (tls.getString("clientChain") != null) {
             // client side certificate
                 httpOptions.setClientAuth(REQUEST)
