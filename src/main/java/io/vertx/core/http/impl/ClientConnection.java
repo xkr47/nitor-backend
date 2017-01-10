@@ -179,7 +179,7 @@ class ClientConnection extends ConnectionBase implements HttpClientConnection, H
         if (msg instanceof HttpResponse) {
           HttpResponse resp = (HttpResponse) msg;
           if (resp.getStatus().code() != 101) {
-            handleException(new WebSocketHandshakeException("Websocket connection attempt returned HTTP status code " + resp.getStatus().code()));
+            handleException(new WebSocketHandshakeRejectedException("Websocket connection attempt returned HTTP status code " + resp.getStatus().code(), resp));
             return;
           }
           response = new DefaultFullHttpResponse(resp.getProtocolVersion(), resp.getStatus());
