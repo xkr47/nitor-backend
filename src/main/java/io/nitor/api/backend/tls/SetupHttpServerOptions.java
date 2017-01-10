@@ -31,6 +31,7 @@ public class SetupHttpServerOptions {
                 // basic TCP/HTTP options
                 .setReuseAddress(true)
                 .setCompressionSupported(true)
+                // TODO: upcoming in vertx 3.4+ .setCompressionLevel(2)
                 .setIdleTimeout((int) MINUTES.toSeconds(10))
                 .setSsl(true)
                 // server side certificate
@@ -40,9 +41,7 @@ public class SetupHttpServerOptions {
                 // TLS tuning
                 .addEnabledSecureTransportProtocol("TLSv1.2")
                 .addEnabledSecureTransportProtocol("TLSv1.3");
-        if (tls.getBoolean("http2", true)) {
-            httpOptions.setAlpnVersions(asList(HTTP_1_1, HTTP_2));
-        } else {
+        if (!tls.getBoolean("http2", true)) {
             httpOptions.setAlpnVersions(asList(HTTP_1_1));
         }
         if (tls.getString("clientChain") != null) {
