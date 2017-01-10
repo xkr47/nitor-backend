@@ -1,0 +1,2 @@
+*.java	licensefile=.githooks/license-maintainer/LICENSE-javadoc
+/src/main/java/io/vertx/**/*.java	!licensefile
