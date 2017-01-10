@@ -3,7 +3,7 @@
   "http2": true,
   "tls": {
     "serverKey": "certs/localhost.key.clear",
-    "serverCert": "certs/localhost.crt",
+    "serverCert": "certs/localhost.crt"
   },
   "clientAuth": {
     "path": "/*",
