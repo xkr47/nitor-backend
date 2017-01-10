@@ -1,5 +1,6 @@
 package io.nitor.api.backend;
 
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.nitor.api.backend.auth.SimpleConfigAuthProvider;
 import io.nitor.api.backend.proxy.Proxy.ProxyException;
 import io.nitor.api.backend.proxy.SetupProxy;
@@ -72,6 +73,20 @@ public class NitorBackend extends AbstractVerticle
             }
             routingContext.response().setChunked(true).write(resp).end();
         });
+
+        JsonObject clientAuth = config().getJsonObject("clientAuth");
+        if (clientAuth != null) {
+            if (null != clientAuth.getString("clientChain")) {
+                router.route(clientAuth.getString("path", "/*")).handler(routingContext -> {
+                    try {
+                        routingContext.request().peerCertificateChain();
+                    } catch (SSLPeerUnverifiedException e) {
+                        routingContext.response().setStatusCode(HttpResponseStatus.FORBIDDEN.code());
+                        routingContext.response().end();
+                    }
+                });
+            }
+        }
 
         JsonObject basicAuth = config().getJsonObject("basicAuth");
         if (basicAuth != null) {
