@@ -14,7 +14,7 @@
     }
   },
   "proxy": {
-    "route": "/proxy",
+    "route": "/proxy/*",
     "host": "example.org",
     "port": 80,
     "path": "/",

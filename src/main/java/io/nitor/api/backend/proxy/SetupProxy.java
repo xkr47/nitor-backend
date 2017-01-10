@@ -23,7 +23,21 @@ public class SetupProxy {
                 .setTryUseCompression(false));
 
         Proxy proxy = new Proxy(client,
-                (routingContext, targetHandler) -> targetHandler.handle(new Proxy.Target(proxyConf.getString("host"), proxyConf.getInteger("port"), proxyConf.getString("path"), proxyConf.getString("hostHeader"))));
+                (routingContext, targetHandler) -> {
+                    String prefix = proxyConf.getString("path");
+                    if (prefix.endsWith("/")) {
+                        prefix = prefix.substring(0, prefix.length() - 1);
+                    }
+                    String route = proxyConf.getString("route");
+                    if (route.endsWith("*")) {
+                        route = route.substring(0, route.length() - 1);
+                    }
+                    if (route.endsWith("/")) {
+                        route = route.substring(0, route.length() - 1);
+                    }
+                    String suffix = routingContext.request().uri().substring(route.length());
+                    targetHandler.handle(new Proxy.Target(proxyConf.getString("host"), proxyConf.getInteger("port"), prefix + suffix, proxyConf.getString("hostHeader")));
+                });
 
         router.get(proxyConf.getString("route")).handler(proxy::handle);
 
