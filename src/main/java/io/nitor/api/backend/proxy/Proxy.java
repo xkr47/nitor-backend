@@ -126,6 +126,11 @@ public class Proxy implements Handler<RoutingContext> {
 
     static final AtomicLong requestId = new AtomicLong(Clock.systemUTC().millis());
 
+    static class State {
+        boolean clientFinished;
+        boolean serverFinished;
+    }
+
     public void handle(RoutingContext routingContext) {
         final HttpServerRequest sreq = routingContext.request();
         final boolean isTls = "https".equals(routingContext.request().scheme());
@@ -142,6 +147,9 @@ public class Proxy implements Handler<RoutingContext> {
             sres.headers().add("connection", "keep-alive");
         }
         sreq.exceptionHandler(t -> routingContext.fail(new ProxyException(500, RejectReason.incomingRequestFail, t)));
+
+        final State state = new State();
+
         targetResolver.resolveNextHop(routingContext, nextHop -> {
             if (nextHop == null) {
                 throw new NullPointerException("nextHop must not be null");
@@ -217,11 +225,12 @@ public class Proxy implements Handler<RoutingContext> {
                 });
                 return;
             }
-            final boolean[] aborted = { false };
             HttpClientRequest creq = client.request(sreq.method(), nextHop.socketPort, nextHop.socketHost, nextHop.uri);
             creq.handler(cres -> {
                 cres.exceptionHandler(t -> {
-                    if (!aborted[0]) {
+                    if (!state.serverFinished) {
+                        state.clientFinished = true;
+                        state.serverFinished = true;
                         routingContext.fail(new ProxyException(502, RejectReason.incomingResponseFail, t));
                     }
                 });
@@ -239,11 +248,19 @@ public class Proxy implements Handler<RoutingContext> {
                 }
 
                 Pump resPump = Pump.pump(cres, sres);
-                cres.endHandler(v -> sres.end());
+                cres.endHandler(v -> {
+                    state.clientFinished = true;
+                    if (!state.serverFinished) {
+                        state.serverFinished = true;
+                        sres.end();
+                    }
+                });
                 resPump.start();
             });
             creq.exceptionHandler(t -> {
-                if (!aborted[0]) {
+                if (!state.serverFinished) {
+                    state.clientFinished = true;
+                    state.serverFinished = true;
                     routingContext.fail(new ProxyException(502, RejectReason.outgoingRequestFail, t));
                 }
             });
@@ -256,9 +273,14 @@ public class Proxy implements Handler<RoutingContext> {
             Pump reqPump = Pump.pump(sreq, creq);
             sreq.endHandler(v -> creq.end());
             sres.closeHandler(v -> {
-                aborted[0] = true;
-                creq.connection().close();
-                routingContext.fail(new ProxyException(0, RejectReason.outgoingResponseFail, null));
+                if (!state.clientFinished) {
+                    state.clientFinished = true;
+                    creq.connection().close();
+                }
+                if (!state.serverFinished) {
+                    state.serverFinished = true;
+                    routingContext.fail(new ProxyException(0, RejectReason.outgoingResponseFail, null));
+                }
             });
             reqPump.start();
         });
