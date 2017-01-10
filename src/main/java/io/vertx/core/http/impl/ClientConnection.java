@@ -22,7 +22,6 @@ import io.netty.handler.codec.http.*;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.websocketx.*;
 import io.netty.util.ReferenceCountUtil;
-import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
@@ -31,7 +30,6 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpVersion;
-import io.vertx.core.http.impl.*;
 import io.vertx.core.http.impl.ws.WebSocketFrameInternal;
 import io.vertx.core.impl.ContextImpl;
 import io.vertx.core.logging.Logger;
@@ -613,12 +611,12 @@ class ClientConnection extends ConnectionBase implements HttpClientConnection, H
   }
 
   @Override
-  public HttpConnection goAwayHandler(@Nullable Handler<GoAway> handler) {
+  public HttpConnection goAwayHandler(Handler<GoAway> handler) {
     throw new UnsupportedOperationException("HTTP/1.x connections don't support GOAWAY");
   }
 
   @Override
-  public HttpConnection shutdownHandler(@Nullable Handler<Void> handler) {
+  public HttpConnection shutdownHandler(Handler<Void> handler) {
     throw new UnsupportedOperationException("HTTP/1.x connections don't support GOAWAY");
   }
 
@@ -663,7 +661,7 @@ class ClientConnection extends ConnectionBase implements HttpClientConnection, H
   }
 
   @Override
-  public HttpConnection pingHandler(@Nullable Handler<Buffer> handler) {
+  public HttpConnection pingHandler(Handler<Buffer> handler) {
     throw new UnsupportedOperationException("HTTP/1.x connections don't support PING");
   }
 
