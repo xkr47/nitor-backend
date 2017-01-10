@@ -39,9 +39,9 @@ public class SetupProxy {
                     targetHandler.handle(new Proxy.Target(proxyConf.getString("host"), proxyConf.getInteger("port"), prefix + suffix, proxyConf.getString("hostHeader")));
                 });
 
-        router.get(proxyConf.getString("route")).handler(proxy::handle);
+        router.route(proxyConf.getString("route")).handler(proxy::handle);
 
-        router.get(proxyConf.getString("route")).handler(routingContext -> {
+        router.route(proxyConf.getString("route")).handler(routingContext -> {
             if (routingContext.failed()) {
                 ProxyException ex = (ProxyException) routingContext.failure();
                 if (!routingContext.response().headWritten()) {
