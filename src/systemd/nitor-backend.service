@@ -9,7 +9,7 @@ DynamicUser=yes
 
 StandardInput=socket
 WorkingDirectory=/opt/nitor/backend
-ExecStart=/usr/bin/java -Xmx512M -XX:+UseG1GC -XX:+UseLargePages -Dvertx.cacheDirBase=/run/backend -jar /opt/nitor/backend/backend-1.0.0-fat.jar
+ExecStart=/usr/bin/java -Xmx512M -XX:+UseG1GC -XX:+UseLargePages -Dvertx.cacheDirBase=/run/backend -jar ${install.dir}/${artifactId}/${project.build.finalName}.jar
 Restart=always
 RestartSec=10
 

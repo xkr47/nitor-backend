@@ -12,6 +12,7 @@
   <properties>
     <vertx.version>3.3.3</vertx.version>
     <log4j2.version>2.7</log4j2.version>
+    <install.dir>/opt/nitor</install.dir>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
   <dependencies>
@@ -28,7 +29,7 @@
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-tcnative-boringssl-static</artifactId>
-      <version>1.1.33.Fork23</version>
+      <version>1.1.33.Fork25</version>
       <classifier>${os.detected.classifier}</classifier>
     </dependency>
     <dependency>
@@ -152,7 +153,97 @@
                 </transformer>
               </transformers>
               <artifactSet/>
-              <outputFile>${project.build.directory}/${project.artifactId}-${project.version}-fat.jar</outputFile>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.0.1</version>
+        <executions>
+          <execution>
+            <id>copy-resources</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/systemd</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>src/systemd</directory>
+                  <filtering>true</filtering>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>rpm-maven-plugin</artifactId>
+        <version>2.1.5</version>
+        <executions>
+          <execution>
+            <id>attach-rpm</id>
+            <goals>
+              <goal>attached-rpm</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <group>System Environment/Daemons</group>
+          <license>ASL 2.0</license>
+          <mappings>
+            <mapping>
+              <directory>${install.dir}/${artifactId}</directory>
+              <sources>
+                <source>
+                  <location>${project.build.directory}/${project.build.finalName}.jar</location>
+                </source>
+              </sources>
+            </mapping>
+            <mapping>
+              <directory>/usr/lib/systemd/system</directory>
+              <directoryIncluded>false</directoryIncluded>
+              <sources>
+                <source>
+                  <location>${project.build.directory}/systemd</location>
+                </source>
+              </sources>
+            </mapping>
+          </mappings>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>jdeb</artifactId>
+        <groupId>org.vafer</groupId>
+        <version>1.5</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>jdeb</goal>
+            </goals>
+            <configuration>
+              <dataSet>
+                <data>
+                  <src>${project.build.directory}/${project.build.finalName}.jar</src>
+                  <type>file</type>
+                  <mapper>
+                    <type>perm</type>
+                    <prefix>${install.dir}/${artifactId}</prefix>
+                  </mapper>
+                </data>
+                <data>
+                  <src>${project.build.directory}/systemd</src>
+                  <type>directory</type>
+                  <mapper>
+                    <type>perm</type>
+                    <prefix>/usr/lib/systemd/system</prefix>
+                  </mapper>
+                </data>
+              </dataSet>
             </configuration>
           </execution>
         </executions>
