@@ -95,6 +95,7 @@ public class NitorBackend extends AbstractVerticle
                 router.route(clientAuth.getString("path", "/*")).handler(routingContext -> {
                     try {
                         routingContext.request().peerCertificateChain();
+                        routingContext.next();
                     } catch (SSLPeerUnverifiedException e) {
                         routingContext.response().setStatusCode(HttpResponseStatus.FORBIDDEN.code());
                         routingContext.response().end();
