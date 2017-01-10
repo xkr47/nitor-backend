@@ -1,17 +1,18 @@
 package io.nitor.api.backend.proxy;
 
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.VertxException;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.http.*;
+import io.vertx.core.http.impl.HeadersAdaptor;
+import io.vertx.core.http.impl.WebSocketHandshakeRejectedException;
 import io.vertx.core.streams.Pump;
 import io.vertx.ext.web.RoutingContext;
 
 import java.time.Clock;
 import java.util.HashSet;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
@@ -158,6 +159,64 @@ public class Proxy implements Handler<RoutingContext> {
                 routingContext.fail(new ProxyException(400, RejectReason.noHostHeader, null));
                 return;
             }
+            boolean isWebsocket = !isHTTP2 && "websocket".equals(sreqh.get("upgrade"));
+            if (isWebsocket) {
+                MultiMap creqh = new CaseInsensitiveHeaders();
+                propagateRequestHeaders(isTls, chost, sreqh, origHost, creqh);
+                if (nextHop.hostHeader != null) {
+                    creqh.set("Host", nextHop.hostHeader);
+                }
+                client.websocket(nextHop.socketPort, nextHop.socketHost, nextHop.uri, creqh, cws -> {
+                    // lol no headers copied
+                    final boolean[] isClosed = {false};
+                    ServerWebSocket sws = sreq.upgrade();
+                    sws.frameHandler(cws::writeFrame);
+                    cws.frameHandler(sws::writeFrame);
+                    sws.closeHandler(v -> {
+                        if (!isClosed[0]) {
+                            isClosed[0] = true;
+                            cws.close();
+                        }
+                    });
+                    cws.closeHandler(v -> {
+                        if (!isClosed[0]) {
+                            isClosed[0] = true;
+                            sws.close();
+                        }
+                    });
+                    sws.exceptionHandler(t -> {
+                        t.printStackTrace();
+                        try {
+                            cws.close();
+                        } catch (IllegalStateException e) {
+                            // whatever
+                        }
+                    });
+                    cws.exceptionHandler(t -> {
+                        t.printStackTrace();
+                        try {
+                            sws.close();
+                        } catch (IllegalStateException e) {
+                            // whatever
+                        }
+                    });
+                }, t -> {
+                    t.printStackTrace();
+                    sres.setStatusCode(HttpResponseStatus.BAD_GATEWAY.code());
+                    if (t instanceof WebSocketHandshakeRejectedException) {
+                        WebSocketHandshakeRejectedException e = (WebSocketHandshakeRejectedException) t;
+                        sres.setStatusCode(e.resp.status().code());
+                        sres.setStatusMessage(e.resp.status().reasonPhrase());
+                        MultiMap headers = new HeadersAdaptor(e.resp.headers());
+                        copyEndToEndHeaders(headers, sres.headers());
+                        sres.headers().add("keep-alive", keepAliveHeaderValue);
+                        sres.headers().add("connection", "keep-alive");
+                        sres.headers().set("content-length", "0");
+                    }
+                    sres.end();
+                });
+                return;
+            }
             final boolean[] aborted = { false };
             HttpClientRequest creq = client.request(sreq.method(), nextHop.socketPort, nextHop.socketHost, nextHop.uri);
             creq.handler(cres -> {
@@ -189,11 +248,8 @@ public class Proxy implements Handler<RoutingContext> {
                 }
             });
             MultiMap creqh = creq.headers();
-            copyEndToEndHeaders(sreqh, creqh);
             creq.setHost(nextHop.hostHeader);
-            creqh.set("X-Host", origHost);
-            creqh.set("X-Forwarded-For", chost);
-            creqh.set("X-Forwarded-Proto", isTls ? "https" : "http");
+            propagateRequestHeaders(isTls, chost, sreqh, origHost, creqh);
             if (sreqh.getAll("transfer-encoding").stream().filter(v -> v.equals("chunked")).findFirst().isPresent()) {
                 creq.setChunked(true);
             }
@@ -206,5 +262,12 @@ public class Proxy implements Handler<RoutingContext> {
             });
             reqPump.start();
         });
+    }
+
+    private void propagateRequestHeaders(boolean isTls, String chost, MultiMap sreqh, String origHost, MultiMap creqh) {
+        copyEndToEndHeaders(sreqh, creqh);
+        creqh.set("X-Host", origHost);
+        creqh.set("X-Forwarded-For", chost);
+        creqh.set("X-Forwarded-Proto", isTls ? "https" : "http");
     }
 }
