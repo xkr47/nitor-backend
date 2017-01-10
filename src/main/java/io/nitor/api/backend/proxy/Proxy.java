@@ -178,36 +178,23 @@ public class Proxy implements Handler<RoutingContext> {
                     // lol no headers copied
                     final boolean[] isClosed = {false};
                     ServerWebSocket sws = sreq.upgrade();
-                    sws.frameHandler(cws::writeFrame);
-                    cws.frameHandler(sws::writeFrame);
-                    sws.closeHandler(v -> {
-                        if (!isClosed[0]) {
-                            isClosed[0] = true;
-                            cws.close();
-                        }
-                    });
-                    cws.closeHandler(v -> {
-                        if (!isClosed[0]) {
-                            isClosed[0] = true;
-                            sws.close();
-                        }
-                    });
-                    sws.exceptionHandler(t -> {
-                        t.printStackTrace();
-                        try {
-                            cws.close();
-                        } catch (IllegalStateException e) {
-                            // whatever
-                        }
-                    });
-                    cws.exceptionHandler(t -> {
-                        t.printStackTrace();
-                        try {
-                            sws.close();
-                        } catch (IllegalStateException e) {
-                            // whatever
-                        }
-                    });
+                    for (final WebSocketBase[] pair : new WebSocketBase[][]{{sws, cws}, {cws, sws}}) {
+                        pair[0].frameHandler(pair[1]::writeFrame)
+                                .closeHandler(v -> {
+                                    if (!isClosed[0]) {
+                                        isClosed[0] = true;
+                                        pair[1].close();
+                                    }
+                                })
+                                .exceptionHandler(t -> {
+                                    t.printStackTrace();
+                                    try {
+                                        pair[1].close();
+                                    } catch (IllegalStateException e) {
+                                        // whatever
+                                    }
+                                });
+                    }
                 }, t -> {
                     t.printStackTrace();
                     sres.setStatusCode(HttpResponseStatus.BAD_GATEWAY.code());
