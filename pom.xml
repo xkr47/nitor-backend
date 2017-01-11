@@ -153,6 +153,17 @@
                 </transformer>
               </transformers>
               <artifactSet/>
+              <filters>
+                <filter>
+                  <artifact>org.mortbay.jetty.alpn:jetty-alpn-agent</artifact>
+                  <excludes>
+                    <exclude>org/mortbay/jetty/alpn/agent/npn-*</exclude>
+                    <exclude>org/mortbay/jetty/alpn/agent/alpn-boot-7*</exclude>
+                    <exclude>org/mortbay/jetty/alpn/agent/alpn-boot-*v2014*</exclude>
+                    <exclude>org/mortbay/jetty/alpn/agent/alpn-boot-*v2015*</exclude>
+                  </excludes>
+                </filter>
+              </filters>
             </configuration>
           </execution>
         </executions>
