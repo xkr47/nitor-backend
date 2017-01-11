@@ -43,7 +43,7 @@ public class ToHttpsRedirect {
 
         ByteBuffer reqBuf = ByteBuffer.allocate(16384);
         ByteBuffer respBuf = ByteBuffer.allocate(16384);
-        byte[] baseResp = ("HTTP/1.0 301 Moved Permanently\r\n" +
+        byte[] baseResp = ("HTTP/1.1 301 Moved Permanently\r\n" +
                 "Content-Length: 0\r\n" +
                 "Connection: close\r\n" +
                 "Location: https://"
