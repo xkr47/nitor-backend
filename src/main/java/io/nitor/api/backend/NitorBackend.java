@@ -76,6 +76,7 @@ public class NitorBackend extends AbstractVerticle
 
         Router router = Router.router(vertx);
 
+        router.route().handler(new AccessLogHandler()::handle);
         router.route().handler(routingContext -> {
             routingContext.response().putHeader("strict-transport-security", "max-age=31536000; includeSubDomains");
             routingContext.next();
