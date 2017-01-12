@@ -29,6 +29,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
+import java.io.File;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
@@ -59,6 +60,9 @@ public class NitorBackend extends AbstractVerticle
     }
 
     private static void setupLogging() {
+        if (new File("log4j2.xml").exists()) {
+            setProperty("log4j.configurationFile", "log4j2.xml");
+        }
         setProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager");
         setProperty("vertx.logger-delegate-factory-class-name", "io.vertx.core.logging.Log4j2LogDelegateFactory");
         logger = LogManager.getLogger(NitorBackend.class);
