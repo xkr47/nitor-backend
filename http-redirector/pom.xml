@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.nitor.server</groupId>
   <artifactId>http-redirector</artifactId>
-  <version>1.1-SNAPSHOT</version>
+  <version>1.1</version>
   <prerequisites>
     <maven>3.3.9</maven>
   </prerequisites>
