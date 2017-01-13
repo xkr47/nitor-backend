@@ -30,10 +30,13 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 public class SetupProxy {
     public static void setupProxy(Vertx vertx, Router router, JsonObject proxyConf) {
         HttpClient client = vertx.createHttpClient(new HttpClientOptions()
-                .setConnectTimeout((int) SECONDS.toMillis(10))
-                .setIdleTimeout((int) SECONDS.toSeconds(15))
-                .setMaxPoolSize(1000)
-                .setMaxWaitQueueSize(20)
+                .setConnectTimeout((int) SECONDS.toMillis(proxyConf.getInteger("connectTimeout", 10)))
+                .setIdleTimeout((int) SECONDS.toSeconds(proxyConf.getInteger("idleTimeout", 15)))
+                .setMaxPoolSize(proxyConf.getInteger("maxPoolSize", 30))
+                .setPipelining(proxyConf.getInteger("pipelineDepth", 0) > 1)
+                .setPipeliningLimit(proxyConf.getInteger("pipelineDepth", 1))
+                .setMaxWaitQueueSize(100)
+                .setUsePooledBuffers(true)
                 .setProtocolVersion(HTTP_1_1)
                 .setTryUseCompression(false));
 
