@@ -9,7 +9,7 @@ DynamicUser=yes
 
 StandardInput=socket
 WorkingDirectory=/tmp
-ExecStart=/usr/bin/java -Xss256k -Xmx64M -jar ${install.dir}/${artifactId}/${project.build.finalName}.jar
+ExecStart=/usr/bin/java -Xss256k -Xmx64M -XX:+ExitOnOutOfMemoryError -jar ${install.dir}/${artifactId}/${project.build.finalName}.jar
 Restart=always
 RestartSec=10
 Nice=5

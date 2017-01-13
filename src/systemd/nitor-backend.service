@@ -11,7 +11,7 @@ DynamicUser=yes
 StandardInput=socket
 WorkingDirectory=${install.dir}/${artifactId}
 RuntimeDirectory=backend
-ExecStart=/usr/bin/java -Xmx512M -XX:+UseG1GC -XX:+UseLargePages -Dvertx.cacheDirBase=/run/backend -jar ${install.dir}/${artifactId}/${project.build.finalName}.jar -conf ${install.dir}/${artifactId}/config.json
+ExecStart=/usr/bin/java -Xmx512M -Xss512k -XX:+UseG1GC -XX:+UseLargePages -XX:+ExitOnOutOfMemoryError -Dvertx.cacheDirBase=/run/backend -jar ${install.dir}/${artifactId}/${project.build.finalName}.jar -conf ${install.dir}/${artifactId}/config.json
 Restart=always
 RestartSec=10
 
