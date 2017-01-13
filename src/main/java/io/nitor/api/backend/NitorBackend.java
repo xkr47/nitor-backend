@@ -21,6 +21,7 @@ import io.nitor.api.backend.proxy.Proxy.ProxyException;
 import io.nitor.api.backend.proxy.SetupProxy;
 import io.nitor.api.backend.tls.SetupHttpServerOptions;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.AuthHandler;
@@ -115,9 +116,9 @@ public class NitorBackend extends AbstractVerticle
             router.route(basicAuth.getString("path", "/*")).handler(basicAuthHandler);
         }
 
-        JsonObject proxyConf = config().getJsonObject("proxy");
+        JsonArray proxyConf = config().getJsonArray("proxy");
         if (proxyConf != null) {
-            SetupProxy.setupProxy(vertx, router, proxyConf);
+            proxyConf.forEach(conf -> SetupProxy.setupProxy(vertx, router, (JsonObject) conf));
         }
 
         router.route().failureHandler(routingContext -> {
