@@ -31,7 +31,7 @@ public class SetupProxy {
     public static void setupProxy(Vertx vertx, Router router, JsonObject proxyConf) {
         HttpClient client = vertx.createHttpClient(new HttpClientOptions()
                 .setConnectTimeout((int) SECONDS.toMillis(10))
-                .setIdleTimeout((int) MINUTES.toSeconds(2))
+                .setIdleTimeout((int) SECONDS.toSeconds(15))
                 .setMaxPoolSize(1000)
                 .setMaxWaitQueueSize(20)
                 .setProtocolVersion(HTTP_1_1)
