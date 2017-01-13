@@ -3,15 +3,13 @@ Description=Nitor backend service
 After=network.target
 
 [Service]
-User=nobody
-Group=nobody
-# todo create group hugepages and with rights to use hugepages
-DynamicUser=yes
+User=${username}
+Group=${username}
 
 StandardInput=socket
-WorkingDirectory=${install.dir}/${artifactId}
+WorkingDirectory=${install.dir}
 RuntimeDirectory=backend
-ExecStart=/usr/bin/java -Xmx512M -Xss512k -XX:+UseG1GC -XX:+UseLargePages -XX:+ExitOnOutOfMemoryError -Dvertx.cacheDirBase=/run/backend -jar ${install.dir}/${artifactId}/${project.build.finalName}.jar -conf ${install.dir}/${artifactId}/config.json
+ExecStart=/usr/bin/java -Xmx512M -Xss512k -XX:+UseG1GC -XX:+UseLargePages -XX:+ExitOnOutOfMemoryError -Dvertx.cacheDirBase=/run/backend -jar ${install.dir}/${project.build.finalName}.jar -conf ${install.dir}/config.json
 Restart=always
 RestartSec=10
 

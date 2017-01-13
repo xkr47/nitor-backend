@@ -12,7 +12,8 @@
   <properties>
     <vertx.version>3.3.3</vertx.version>
     <log4j2.version>2.7</log4j2.version>
-    <install.dir>/opt/nitor</install.dir>
+    <install.dir>/opt/nitor/${artifactId}</install.dir>
+    <username>${artifactId}</username>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
   <dependencies>
@@ -207,7 +208,7 @@
           <license>ASL 2.0</license>
           <mappings>
             <mapping>
-              <directory>${install.dir}/${artifactId}</directory>
+              <directory>${install.dir}</directory>
               <sources>
                 <source>
                   <location>${project.build.directory}/${project.build.finalName}.jar</location>
@@ -224,6 +225,9 @@
               </sources>
             </mapping>
           </mappings>
+          <preinstallScriptlet>
+             <script>groupadd --force --system hugepage; getent passwd ${username} > /dev/null || useradd --user-group --groups hugepage --shell /sbin/nologin --home-dir ${install.dir} --no-create-home ${username};</script>
+          </preinstallScriptlet>
         </configuration>
       </plugin>
       <plugin>
