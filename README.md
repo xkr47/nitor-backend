@@ -3,19 +3,19 @@ Fully async rest and static file serving backend based on vert.x
 ## Installation
 
 ### Building
-``sh
+```sh
 mvn clean package
-``
+```
 
 ### Running at port 443
-``sh
+```sh
 mkdir -p /opt/nitor/backend
 cp -a target/backend-1.0.0-fat.jar /opt/nitor/backend
 cp -a certs /opt/nitor/backend
 cp src/systemd/* /etc/systemd/system
 systemd daemon-reload
 systemd start nitor-backend.socket
-``
+```
 
 ## Goals
 
