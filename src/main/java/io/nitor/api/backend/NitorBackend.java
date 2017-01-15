@@ -30,13 +30,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
-import java.io.File;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
 import static com.nitorcreations.core.utils.KillProcess.killProcessUsingPort;
 import static java.lang.Integer.getInteger;
-import static java.lang.System.*;
+import static java.lang.System.exit;
+import static java.lang.System.getProperty;
+import static java.lang.System.setProperty;
+import static java.nio.file.Files.exists;
 
 public class NitorBackend extends AbstractVerticle
 {
@@ -61,7 +64,7 @@ public class NitorBackend extends AbstractVerticle
     }
 
     private static void setupLogging() {
-        if (new File("log4j2.xml").exists()) {
+        if (exists(Paths.get("log4j2.xml"))) {
             setProperty("log4j.configurationFile", "log4j2.xml");
         }
         setProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager");
