@@ -9,7 +9,7 @@ Group=${username}
 StandardInput=socket
 WorkingDirectory=${install.dir}
 RuntimeDirectory=backend
-ExecStart=/usr/bin/java -Xmx512M -Xss512k -XX:+UseG1GC -XX:+UseLargePages -XX:+ExitOnOutOfMemoryError -Dvertx.cacheDirBase=/run/backend -jar ${install.dir}/${project.build.finalName}.jar -conf ${install.dir}/config.json
+ExecStart=/usr/bin/java -Xms512M -Xmx512M -Xss512k -XX:+UseG1GC -XX:+UseLargePages -XX:+AlwaysPreTouch -XX:+ExitOnOutOfMemoryError -Dvertx.cacheDirBase=/run/backend -jar ${install.dir}/${project.build.finalName}.jar -conf ${install.dir}/config.json
 Restart=always
 RestartSec=10
 
