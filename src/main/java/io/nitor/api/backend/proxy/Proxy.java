@@ -69,9 +69,6 @@ public class Proxy implements Handler<RoutingContext> {
         public String uri;
         public String hostHeader;
 
-        public Target() {
-        }
-
         /**
          * @param hostHeader can be null, in which case socketHost &amp; socketPort is used
          */
@@ -80,6 +77,10 @@ public class Proxy implements Handler<RoutingContext> {
             this.socketPort = socketPort;
             this.uri = uri;
             this.hostHeader = hostHeader;
+        }
+
+        public Target withSuffix(String suffix) {
+            return new Target(socketHost, socketPort, uri + suffix, hostHeader);
         }
     }
 

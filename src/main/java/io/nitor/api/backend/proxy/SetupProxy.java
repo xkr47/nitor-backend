@@ -22,12 +22,15 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import static io.vertx.core.http.HttpVersion.HTTP_1_1;
-import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class SetupProxy {
+    private static final Logger logger = LogManager.getLogger(SetupProxy.class);
+
     public static void setupProxy(Vertx vertx, Router router, JsonObject proxyConf) {
         HttpClient client = vertx.createHttpClient(new HttpClientOptions()
                 .setConnectTimeout((int) SECONDS.toMillis(proxyConf.getInteger("connectTimeout", 10)))
@@ -40,21 +43,25 @@ public class SetupProxy {
                 .setProtocolVersion(HTTP_1_1)
                 .setTryUseCompression(false));
 
+        String prefix = proxyConf.getString("path");
+        if (prefix.endsWith("/")) {
+            prefix = prefix.substring(0, prefix.length() - 1);
+        }
+        String route = proxyConf.getString("route");
+        if (route.endsWith("*")) {
+            route = route.substring(0, route.length() - 1);
+        }
+        if (route.endsWith("/")) {
+            route = route.substring(0, route.length() - 1);
+        }
+        final String proxyRoute = route;
+        final Proxy.Target proxyTarget = new Proxy.Target(proxyConf.getString("host"), proxyConf.getInteger("port"), prefix, proxyConf.getString("hostHeader"));
+        logger.info("Proxying {} to {}:{}/{}", route, proxyTarget.socketHost, proxyTarget.socketPort, proxyTarget.uri);
+
         Proxy proxy = new Proxy(client,
                 (routingContext, targetHandler) -> {
-                    String prefix = proxyConf.getString("path");
-                    if (prefix.endsWith("/")) {
-                        prefix = prefix.substring(0, prefix.length() - 1);
-                    }
-                    String route = proxyConf.getString("route");
-                    if (route.endsWith("*")) {
-                        route = route.substring(0, route.length() - 1);
-                    }
-                    if (route.endsWith("/")) {
-                        route = route.substring(0, route.length() - 1);
-                    }
-                    String suffix = routingContext.request().uri().substring(route.length());
-                    targetHandler.handle(new Proxy.Target(proxyConf.getString("host"), proxyConf.getInteger("port"), prefix + suffix, proxyConf.getString("hostHeader")));
+                    String suffix = routingContext.request().uri().substring(proxyRoute.length());
+                    targetHandler.handle(proxyTarget.withSuffix(suffix));
                 });
 
         router.route(proxyConf.getString("route")).handler(proxy::handle);
