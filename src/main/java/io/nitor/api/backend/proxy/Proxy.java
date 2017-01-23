@@ -274,7 +274,13 @@ public class Proxy implements Handler<RoutingContext> {
                 creq.setChunked(true);
             }
             Pump reqPump = Pump.pump(sreq, creq);
-            sreq.endHandler(v -> creq.end());
+            sreq.endHandler(v -> {
+                try {
+                    creq.end();
+                } catch (IllegalStateException ex) {
+                    // ignore - nothing can be done - the request is already complete/closed - TODO log?
+                }
+            });
             sres.closeHandler(v -> {
                 if (!state.clientFinished) {
                     state.clientFinished = true;
