@@ -21,6 +21,7 @@ import io.nitor.api.backend.proxy.Proxy.ProxyException;
 import io.nitor.api.backend.proxy.SetupProxy;
 import io.nitor.api.backend.tls.SetupHttpServerOptions;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
@@ -82,7 +83,9 @@ public class NitorBackend extends AbstractVerticle
 
         router.route().handler(new AccessLogHandler()::handle);
         router.route().handler(routingContext -> {
-            routingContext.response().putHeader("strict-transport-security", "max-age=31536000; includeSubDomains");
+            HttpServerResponse resp = routingContext.response();
+            resp.putHeader("strict-transport-security", "max-age=31536000; includeSubDomains");
+            resp.putHeader("x-frame-options", "DENY");
             routingContext.next();
         });
         router.get("/healthCheck").handler(routingContext -> {
@@ -108,6 +111,7 @@ public class NitorBackend extends AbstractVerticle
                     } catch (SSLPeerUnverifiedException e) {
                         routingContext.response().setStatusCode(HttpResponseStatus.FORBIDDEN.code());
                         routingContext.response().end();
+                        logger.info("Rejected request that was missing vavlid client certificate from ip {}: {}", routingContext.request().remoteAddress(), e.getMessage());
                     }
                 });
             }
