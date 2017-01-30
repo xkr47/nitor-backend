@@ -11,7 +11,7 @@
   },
   "basicAuth": {
     "path": "/*",
-    "real": "nitor",
+    "realm": "nitor",
     "users": {
       "test": "test",
       "admin": "nimda"
@@ -22,6 +22,13 @@
     "cacheTimeout": 1800,
     "dir": "webroot"
   }],
+  "oidcAuth": {
+    "path": "/*",
+    "clientId": "",
+    "clientSecret": "",
+    "configurationURI": "",
+    "scope": "openid profile email phone"
+  },
   "proxy": [{
     "route": "/proxy/*",
     "host": "example.org",

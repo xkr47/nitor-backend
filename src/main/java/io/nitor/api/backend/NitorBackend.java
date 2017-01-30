@@ -15,6 +15,8 @@
  */
 package io.nitor.api.backend;
 
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.oauth2.sdk.auth.ClientAuthenticationMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.nitor.api.backend.auth.SimpleConfigAuthProvider;
 import io.nitor.api.backend.proxy.Proxy.ProxyException;
@@ -28,14 +30,27 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.AuthHandler;
 import io.vertx.ext.web.handler.BasicAuthHandler;
+import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.ext.web.handler.CookieHandler;
+import io.vertx.ext.web.handler.SessionHandler;
 import io.vertx.ext.web.handler.StaticHandler;
+import io.vertx.ext.web.handler.UserSessionHandler;
+import io.vertx.ext.web.sstore.LocalSessionStore;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.pac4j.core.client.Clients;
+import org.pac4j.core.config.Config;
+import org.pac4j.oidc.client.OidcClient;
+import org.pac4j.oidc.config.OidcConfiguration;
+import org.pac4j.vertx.auth.Pac4jAuthProvider;
+import org.pac4j.vertx.handler.impl.CallbackHandler;
+import org.pac4j.vertx.handler.impl.CallbackHandlerOptions;
+import org.pac4j.vertx.handler.impl.SecurityHandler;
+import org.pac4j.vertx.handler.impl.SecurityHandlerOptions;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static com.nitorcreations.core.utils.KillProcess.killProcessUsingPort;
@@ -121,6 +136,56 @@ public class NitorBackend extends AbstractVerticle
                     }
                 });
             }
+        }
+
+        JsonObject oidcAuth = config().getJsonObject("oidcAuth");
+        if (oidcAuth != null) {
+            OidcConfiguration oidcConfiguration = new OidcConfiguration();
+            oidcConfiguration.setClientId(oidcAuth.getString("clientId"));
+            oidcConfiguration.setSecret(oidcAuth.getString("clientSecret"));
+            oidcConfiguration.setDiscoveryURI(oidcAuth.getString("configurationURI"));
+            oidcConfiguration.setUseNonce(true);
+            //oidcConfiguration.setScope(oidcAuth.getString("scope", "openid email"));
+            oidcConfiguration.setClientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC);
+            oidcConfiguration.setPreferredJwsAlgorithm(JWSAlgorithm.RS256);
+            //oidcConfiguration.addCustomParam("prompt", "consent");
+
+            OidcClient oidcClient = new OidcClient(oidcConfiguration);
+            oidcClient.setName(oidcClient.getName()); // workaround
+
+            Pac4jAuthProvider authProvider = new Pac4jAuthProvider();
+
+            String publicURI = config().getString("publicURI", "https://localhost:" + listenPort);
+            if (publicURI.endsWith("/")) {
+                publicURI = publicURI.substring(0, publicURI.length() - 1);
+            }
+            final String callbackPath = "/oidc/callback";
+            String path = oidcAuth.getString("path", "/*");
+            router.route().handler(CookieHandler.create());
+            router.route().handler(SessionHandler.create(LocalSessionStore.create(vertx)));
+            router.route().handler(UserSessionHandler.create(authProvider));
+
+            Clients clients = new Clients(publicURI + callbackPath, oidcClient);
+
+            Config config = new Config(clients);
+            //config.addAuthorizer("admin", new RequireAnyRoleAuthorizer("ROLE_ADMIN"));
+            SecurityHandlerOptions options = new SecurityHandlerOptions().withClients(oidcClient.getName());
+//            if (authName != null) {
+//                options = options.withAuthorizerName(authName);
+//            }
+
+            CallbackHandlerOptions callbackOptions = new CallbackHandlerOptions();
+            CallbackHandler callbackHandler = new CallbackHandler(vertx, config, callbackOptions);
+
+            router.get(callbackPath).handler(callbackHandler);
+            router.post(callbackPath).handler(BodyHandler.create().setMergeFormAttributes(true));
+            router.post(callbackPath).handler(callbackHandler);
+
+            // workaround needed because pac4j auth is async and vertx does not ask for body early enough
+            // this breaks file uploads mime-multiparts from the proxied application
+            // we should instead try to do pause/resume - https://github.com/vert-x3/vertx-web/issues/198#issuecomment-224817011
+            router.route(path).handler(BodyHandler.create().setMergeFormAttributes(false).setDeleteUploadedFilesOnEnd(true).setUploadsDirectory(getProperty("vertx.cacheDirBase", ".") + "/file-uploads"));
+            router.route(path).handler(new SecurityHandler(vertx, config, authProvider, options));
         }
 
         JsonObject basicAuth = config().getJsonObject("basicAuth");

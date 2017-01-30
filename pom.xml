@@ -16,6 +16,35 @@
     <username>${artifactId}</username>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.nimbusds</groupId>
+        <artifactId>nimbus-jose-jwt</artifactId>
+        <version>4.34.1</version>
+      </dependency>
+      <dependency>
+        <groupId>com.nimbusds</groupId>
+        <artifactId>oauth2-oidc-sdk</artifactId>
+        <version>5.21</version>
+      </dependency>
+      <dependency>
+        <groupId>org.pac4j</groupId>
+        <artifactId>pac4j-core</artifactId>
+        <version>1.9.5</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcpkix-jdk15on</artifactId>
+        <version>1.56</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>3.5</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -27,6 +56,68 @@
       <artifactId>vertx-web</artifactId>
       <version>${vertx.version}</version>
     </dependency>
+
+    <!-- netty is faster with optional javaassist -->
+    <!--
+    <dependency>
+      <groupId>org.javassist</groupId>
+      <artifactId>javassist</artifactId>
+      <version>3.21.0-GA</version>
+    </dependency>
+    -->
+
+    <!--
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-auth-jwt</artifactId>
+      <version>${vertx.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-auth-oauth2</artifactId>
+      <version>${vertx.version}</version>
+    </dependency>
+    -->
+
+    <dependency>
+      <groupId>org.pac4j</groupId>
+      <artifactId>vertx-pac4j</artifactId>
+      <version>2.1.0</version>
+      <exclusions>
+        <exclusion>
+          <groupId>io.vertx</groupId>
+          <artifactId>vertx-rx-java</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.pac4j</groupId>
+          <artifactId>pac4j-openid</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.pac4j</groupId>
+          <artifactId>pac4j-cas</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.pac4j</groupId>
+          <artifactId>pac4j-http</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.pac4j</groupId>
+      <artifactId>vertx-pac4j-helper</artifactId>
+      <version>1.1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.pac4j</groupId>
+      <artifactId>pac4j-oidc</artifactId>
+      <version>1.9.5</version>
+    </dependency>
+    <dependency> <!-- required by pac4j but for some reason it has no dependency on it -->
+        <groupId>commons-io</groupId>
+        <artifactId>commons-io</artifactId>
+        <version>2.5</version>
+    </dependency>
+
     <!--
     <dependency>
       <groupId>io.netty</groupId>
@@ -69,7 +160,7 @@
       <artifactId>log4j-core</artifactId>
       <version>${log4j2.version}</version>
     </dependency>
-    <dependency>
+    <dependency> <!--  required by log4j asynclongger -->
       <groupId>com.lmax</groupId>
       <artifactId>disruptor</artifactId>
       <version>3.3.6</version>
@@ -94,6 +185,13 @@
       <artifactId>log4j-jul</artifactId>
       <version>${log4j2.version}</version>
     </dependency>
+    <!--
+    <dependency>
+      <groupId>com.auth0</groupId>
+      <artifactId>java-jwt</artifactId>
+      <version>3.1.0</version>
+    </dependency>
+    -->
   </dependencies>
   <build>
     <extensions>
@@ -157,6 +255,14 @@
               </transformers>
               <artifactSet/>
               <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                  </excludes>
+                </filter>
                 <filter>
                   <artifact>org.mortbay.jetty.alpn:jetty-alpn-agent</artifact>
                   <excludes>
