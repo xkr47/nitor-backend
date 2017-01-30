@@ -55,11 +55,13 @@ public class AccessLogHandler {
             String cert = "";
             try {
                 X509Certificate[] certs = routingContext.request().peerCertificateChain();
-                for (X509Certificate c : certs) {
-                    if (!cert.isEmpty()) {
-                        cert += " ::: ";
+                if (certs != null) {
+                    for (X509Certificate c : certs) {
+                        if (!cert.isEmpty()) {
+                            cert += " ::: ";
+                        }
+                        cert += c.getSubjectDN().getName();
                     }
-                    cert += c.getSubjectDN().getName();
                 }
             } catch (SSLPeerUnverifiedException e) {
                 // ignore
