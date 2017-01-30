@@ -19,7 +19,13 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.VertxException;
-import io.vertx.core.http.*;
+import io.vertx.core.http.CaseInsensitiveHeaders;
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.http.ServerWebSocket;
+import io.vertx.core.http.WebSocketBase;
 import io.vertx.core.http.impl.HeadersAdaptor;
 import io.vertx.core.http.impl.WebSocketHandshakeRejectedException;
 import io.vertx.core.streams.Pump;
@@ -27,7 +33,6 @@ import io.vertx.ext.web.RoutingContext;
 
 import java.time.Clock;
 import java.util.HashSet;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
@@ -64,10 +69,10 @@ public class Proxy implements Handler<RoutingContext> {
     }
 
     public static class Target {
-        public String socketHost;
-        public int socketPort;
-        public String uri;
-        public String hostHeader;
+        public final String socketHost;
+        public final int socketPort;
+        public final String uri;
+        public final String hostHeader;
 
         /**
          * @param hostHeader can be null, in which case socketHost &amp; socketPort is used
@@ -189,6 +194,8 @@ public class Proxy implements Handler<RoutingContext> {
                 propagateRequestHeaders(isTls, chost, sreqh, origHost, creqh);
                 if (nextHop.hostHeader != null) {
                     creqh.set("Host", nextHop.hostHeader);
+                } else {
+                    creqh.remove("Host");
                 }
                 client.websocket(nextHop.socketPort, nextHop.socketHost, nextHop.uri, creqh, cws -> {
                     // lol no headers copied
@@ -237,7 +244,6 @@ public class Proxy implements Handler<RoutingContext> {
                         routingContext.fail(new ProxyException(502, RejectReason.incomingResponseFail, t));
                     }
                 });
-
                 sres.setStatusCode(cres.statusCode());
                 sres.setStatusMessage(cres.statusMessage());
                 MultiMap headers = cres.headers();
@@ -268,9 +274,13 @@ public class Proxy implements Handler<RoutingContext> {
                 }
             });
             MultiMap creqh = creq.headers();
-            creq.setHost(nextHop.hostHeader);
             propagateRequestHeaders(isTls, chost, sreqh, origHost, creqh);
-            if (sreqh.getAll("transfer-encoding").stream().filter(v -> v.equals("chunked")).findFirst().isPresent()) {
+            if (nextHop.hostHeader != null) {
+                creq.setHost(nextHop.hostHeader);
+            } else {
+                creqh.remove("host");
+            }
+            if (sreqh.getAll("transfer-encoding").stream().anyMatch(v -> v.equals("chunked"))) {
                 creq.setChunked(true);
             }
             Pump reqPump = Pump.pump(sreq, creq);
