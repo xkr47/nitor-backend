@@ -19,6 +19,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.VertxException;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.CaseInsensitiveHeaders;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
@@ -283,14 +284,6 @@ public class Proxy implements Handler<RoutingContext> {
             if (sreqh.getAll("transfer-encoding").stream().anyMatch(v -> v.equals("chunked"))) {
                 creq.setChunked(true);
             }
-            Pump reqPump = Pump.pump(sreq, creq);
-            sreq.endHandler(v -> {
-                try {
-                    creq.end();
-                } catch (IllegalStateException ex) {
-                    // ignore - nothing can be done - the request is already complete/closed - TODO log?
-                }
-            });
             sres.closeHandler(v -> {
                 if (!state.clientFinished) {
                     state.clientFinished = true;
@@ -301,7 +294,27 @@ public class Proxy implements Handler<RoutingContext> {
                     routingContext.fail(new ProxyException(0, RejectReason.outgoingResponseFail, null));
                 }
             });
-            reqPump.start();
+            if (sreq.isEnded()) {
+                Buffer body = routingContext.getBody();
+                if (body == null || body.length() == 0) {
+                    creq.end();
+                } else {
+                    if (!creq.isChunked()) {
+                        creq.putHeader("content-length", Integer.toString(body.length()));
+                        creq.end(routingContext.getBody());
+                    }
+                }
+            } else {
+                sreq.endHandler(v -> {
+                    try {
+                        creq.end();
+                    } catch (IllegalStateException ex) {
+                        // ignore - nothing can be done - the request is already complete/closed - TODO log?
+                    }
+                });
+                Pump reqPump = Pump.pump(sreq, creq);
+                reqPump.start();
+            }
         });
     }
 
