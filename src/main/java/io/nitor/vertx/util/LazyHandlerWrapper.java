@@ -24,6 +24,8 @@ public class LazyHandlerWrapper<E> implements Handler<E> {
     private final Consumer<Handler<E>> handlerInstaller;
     private final BiConsumer<Handler<E>, E> wrapper;
     protected Handler<E> wrapped;
+    protected boolean nullWrapped = true;
+    protected boolean deactivated;
 
     public LazyHandlerWrapper(Consumer<Handler<E>> handlerInstaller, BiConsumer<Handler<E>, E> wrapper) {
         this.handlerInstaller = handlerInstaller;
@@ -31,7 +33,9 @@ public class LazyHandlerWrapper<E> implements Handler<E> {
     }
 
     public <T> T handler(Handler<E> wrapped, T thiz) {
-        if (wrapped == null) {
+        if (deactivated) {
+            handlerInstaller.accept(wrapped);
+        } else if (nullWrapped = wrapped == null) {
             handlerInstaller.accept(null);
             this.wrapped = (e) -> {
             };
@@ -40,6 +44,11 @@ public class LazyHandlerWrapper<E> implements Handler<E> {
             handlerInstaller.accept(this);
         }
         return thiz;
+    }
+
+    public void deactivate() {
+        deactivated = true;
+        handlerInstaller.accept(nullWrapped ? null : wrapped);
     }
 
     @Override

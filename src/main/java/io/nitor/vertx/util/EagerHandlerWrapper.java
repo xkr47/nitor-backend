@@ -21,22 +21,33 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class EagerHandlerWrapper<E> implements Handler<E> {
+    private final Consumer<Handler<E>> handlerInstaller;
     private final BiConsumer<Handler<E>, E> wrapper;
     protected Handler<E> wrapped;
+    protected boolean nullWrapped = true;
+    protected boolean deactivated;
 
     public EagerHandlerWrapper(Consumer<Handler<E>> handlerInstaller, BiConsumer<Handler<E>, E> wrapper) {
+        this.handlerInstaller = handlerInstaller;
         this.wrapper = wrapper;
         handlerInstaller.accept(this);
     }
 
     public <T> T handler(Handler<E> wrapped, T thiz) {
-        if (wrapped == null) {
+        if (deactivated) {
+            handlerInstaller.accept(wrapped);
+        } else if (nullWrapped = wrapped == null) {
             this.wrapped = (e) -> {
             };
         } else {
             this.wrapped = wrapped;
         }
         return thiz;
+    }
+
+    public void deactivate() {
+        deactivated = true;
+        handlerInstaller.accept(nullWrapped ? null : wrapped);
     }
 
     @Override
