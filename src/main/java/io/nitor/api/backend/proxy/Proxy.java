@@ -35,11 +35,13 @@ import io.vertx.ext.web.RoutingContext;
 import java.time.Clock;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
 import static io.vertx.core.http.HttpVersion.HTTP_2;
 import static java.util.Arrays.asList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * Reverse HTTP proxy, ported to Java from https://github.com/xkr47/vhostproxy4/
@@ -48,6 +50,8 @@ public class Proxy implements Handler<RoutingContext> {
 
     private final HttpClient client;
     private final TargetResolver targetResolver;
+    private final String keepAliveHeaderValue;
+    private final int clientReceiveTimeout;
 
     public interface TargetResolver {
         /**
@@ -64,9 +68,11 @@ public class Proxy implements Handler<RoutingContext> {
         void resolveNextHop(RoutingContext routingContext, Handler<Target> targetHandler);
     }
 
-    public Proxy(HttpClient client, TargetResolver targetResolver) {
+    public Proxy(HttpClient client, TargetResolver targetResolver, int serverIdleTimeout, int clientReceiveTimeout) {
         this.client = client;
         this.targetResolver = targetResolver;
+        this.keepAliveHeaderValue = "timeout=" + (serverIdleTimeout - 5);
+        this.clientReceiveTimeout = clientReceiveTimeout;
     }
 
     public static class Target {
@@ -127,10 +133,6 @@ public class Proxy implements Handler<RoutingContext> {
     ));
 
     static final Pattern connectionHeaderValueRE = Pattern.compile("\\s*,[\\s,]*+"); // from RFC2616
-
-    static final int serverIdleTimeout = 60;
-
-    static final String keepAliveHeaderValue = "timeout=" + serverIdleTimeout;
 
     static final String requestIdHeader = "X-Request-Id";
 
@@ -237,6 +239,7 @@ public class Proxy implements Handler<RoutingContext> {
                 return;
             }
             HttpClientRequest creq = client.request(sreq.method(), nextHop.socketPort, nextHop.socketHost, nextHop.uri);
+            creq.setTimeout(SECONDS.toMillis(clientReceiveTimeout));
             creq.handler(cres -> {
                 cres.exceptionHandler(t -> {
                     if (!state.serverFinished) {

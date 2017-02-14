@@ -20,6 +20,7 @@ import io.nitor.api.backend.proxy.Proxy.RejectReason;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import org.apache.logging.log4j.LogManager;
@@ -31,7 +32,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 public class SetupProxy {
     private static final Logger logger = LogManager.getLogger(SetupProxy.class);
 
-    public static void setupProxy(Vertx vertx, Router router, JsonObject proxyConf) {
+    public static void setupProxy(Vertx vertx, Router router, JsonObject proxyConf, HttpServerOptions serverOptions) {
         HttpClient client = vertx.createHttpClient(new HttpClientOptions()
                 .setConnectTimeout((int) SECONDS.toMillis(proxyConf.getInteger("connectTimeout", 10)))
                 .setIdleTimeout((int) SECONDS.toSeconds(proxyConf.getInteger("idleTimeout", 15)))
@@ -62,7 +63,9 @@ public class SetupProxy {
                 (routingContext, targetHandler) -> {
                     String suffix = routingContext.request().uri().substring(proxyRoute.length());
                     targetHandler.handle(proxyTarget.withSuffix(suffix));
-                });
+                },
+                serverOptions.getIdleTimeout(),
+                proxyConf.getInteger("clientReceiveTimeout", 300));
 
         router.route(proxyConf.getString("route")).handler(proxy::handle);
 
