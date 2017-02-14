@@ -83,7 +83,6 @@ public class SecurityHandler extends AuthHandlerImpl {
         // event loop
         final VertxWebContext webContext = new VertxWebContext(routingContext);
 
-        //routingContext.request().pause();
         vertx.executeBlocking(future -> securityLogic.perform(webContext, config,
             (ctx, parameters) -> {
                 // This is what should occur if we are authenticated and authorized to view the requested

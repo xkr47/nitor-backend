@@ -146,7 +146,7 @@
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
-      <version>5.0.0-M2</version>
+      <version>5.0.0-M3</version>
       <scope>test</scope>
     </dependency>
 
@@ -185,13 +185,30 @@
       <artifactId>log4j-jul</artifactId>
       <version>${log4j2.version}</version>
     </dependency>
-    <!--
     <dependency>
-      <groupId>com.auth0</groupId>
-      <artifactId>java-jwt</artifactId>
-      <version>3.1.0</version>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-launcher</artifactId>
+      <version>1.0.0-M3</version>
+      <scope>test</scope>
     </dependency>
-    -->
+    <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>java-hamcrest</artifactId>
+      <version>2.0.0.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <version>2.7.9</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-codegen</artifactId>
+      <version>${vertx.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
   <build>
     <extensions>
@@ -227,7 +244,7 @@
           <dependency>
             <groupId>org.junit.platform</groupId>
             <artifactId>junit-platform-surefire-provider</artifactId>
-            <version>1.0.0-M2</version>
+            <version>1.0.0-M3</version>
           </dependency>
         </dependencies>
       </plugin>
