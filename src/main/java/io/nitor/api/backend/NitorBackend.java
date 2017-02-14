@@ -27,12 +27,14 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.AuthHandler;
 import io.vertx.ext.web.handler.BasicAuthHandler;
+import io.vertx.ext.web.handler.StaticHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static com.nitorcreations.core.utils.KillProcess.killProcessUsingPort;
@@ -41,6 +43,7 @@ import static java.lang.System.exit;
 import static java.lang.System.getProperty;
 import static java.lang.System.setProperty;
 import static java.nio.file.Files.exists;
+import static java.util.concurrent.TimeUnit.MINUTES;
 
 public class NitorBackend extends AbstractVerticle
 {
@@ -126,6 +129,19 @@ public class NitorBackend extends AbstractVerticle
         JsonArray proxyConf = config().getJsonArray("proxy");
         if (proxyConf != null) {
             proxyConf.forEach(conf -> SetupProxy.setupProxy(vertx, router, (JsonObject) conf));
+        }
+
+        JsonArray staticConf = config().getJsonArray("static");
+        if (staticConf != null) {
+            staticConf.forEach(c -> {
+                JsonObject conf = (JsonObject) c;
+                router.route(conf.getString("path")).handler(
+                        StaticHandler.create()
+                                .setAllowRootFileSystemAccess(true)
+                                .setWebRoot(conf.getString("dir", "."))
+                                .setCacheEntryTimeout(conf.getInteger("cacheTimeout", (int) MINUTES.toSeconds(30)))
+                );
+            });
         }
 
         router.route().failureHandler(routingContext -> {
