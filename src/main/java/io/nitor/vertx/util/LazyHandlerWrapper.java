@@ -20,11 +20,12 @@ import io.vertx.core.Handler;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import static io.nitor.vertx.util.NoopHandler.NOOP;
+
 public class LazyHandlerWrapper<E> implements Handler<E> {
     private final Consumer<Handler<E>> handlerInstaller;
     private final BiConsumer<Handler<E>, E> wrapper;
-    protected Handler<E> wrapped;
-    protected boolean nullWrapped = true;
+    protected Handler<E> wrapped = NOOP;
     protected boolean deactivated;
 
     public LazyHandlerWrapper(Consumer<Handler<E>> handlerInstaller, BiConsumer<Handler<E>, E> wrapper) {
@@ -35,10 +36,9 @@ public class LazyHandlerWrapper<E> implements Handler<E> {
     public <T> T handler(Handler<E> wrapped, T thiz) {
         if (deactivated) {
             handlerInstaller.accept(wrapped);
-        } else if (nullWrapped = wrapped == null) {
+        } else if (wrapped == null) {
             handlerInstaller.accept(null);
-            this.wrapped = (e) -> {
-            };
+            this.wrapped = NOOP;
         } else {
             this.wrapped = wrapped;
             handlerInstaller.accept(this);
@@ -48,7 +48,7 @@ public class LazyHandlerWrapper<E> implements Handler<E> {
 
     public void deactivate() {
         deactivated = true;
-        handlerInstaller.accept(nullWrapped ? null : wrapped);
+        handlerInstaller.accept(wrapped == NOOP ? null : wrapped);
     }
 
     @Override
