@@ -6,7 +6,7 @@
         </Console>
         <RollingRandomAccessFile name="FILE"
                                  fileName="vertx.log"
-                                 filePattern="vertx-%d{yyyy-MM-dd}-%i.log.gz"
+                                 filePattern="./vertx-%d{yyyy-MM-dd}-%i.log.gz"
                                  immediateFlush="false">
             <PatternLayout charset="UTF-8">
                 <Pattern>%d %-5p %c{1.} [%t] %m%n%rEx</Pattern>
