@@ -48,7 +48,7 @@ public class SetupHttpServerOptions {
                 .setCompressionSupported(false) // otherwise it automatically compresses based on response headers even if pre-compressed with e.g. proxy
                 .setUsePooledBuffers(true)
                 // TODO: upcoming in vertx 3.4+ .setCompressionLevel(2)
-                .setIdleTimeout((int) MINUTES.toSeconds(10))
+                .setIdleTimeout(config.getInteger("idleTimeout", (int) MINUTES.toSeconds(10)))
                 .setSsl(true)
                 // server side certificate
                 .setPemKeyCertOptions(new PemKeyCertOptions()

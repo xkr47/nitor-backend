@@ -21,6 +21,7 @@ import io.nitor.api.backend.proxy.Proxy.ProxyException;
 import io.nitor.api.backend.proxy.SetupProxy;
 import io.nitor.api.backend.tls.SetupHttpServerOptions;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -79,6 +80,8 @@ public class NitorBackend extends AbstractVerticle
            logger.error("Fallback exception handler got", e);
         });
 
+        HttpServerOptions httpServerOptions = SetupHttpServerOptions.createHttpServerOptions(config());
+
         Router router = Router.router(vertx);
 
         router.route().handler(new AccessLogHandler()::handle);
@@ -125,7 +128,7 @@ public class NitorBackend extends AbstractVerticle
 
         JsonArray proxyConf = config().getJsonArray("proxy");
         if (proxyConf != null) {
-            proxyConf.forEach(conf -> SetupProxy.setupProxy(vertx, router, (JsonObject) conf));
+            proxyConf.forEach(conf -> SetupProxy.setupProxy(vertx, router, (JsonObject) conf, httpServerOptions));
         }
 
         router.route().failureHandler(routingContext -> {
@@ -153,7 +156,7 @@ public class NitorBackend extends AbstractVerticle
             routingContext.response().end(error);
         });
 
-        vertx.createHttpServer(SetupHttpServerOptions.createHttpServerOptions(config()))
+        vertx.createHttpServer(httpServerOptions)
                 .requestHandler(router::accept)
                 .listen(listenPort);
     }

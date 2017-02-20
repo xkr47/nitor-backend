@@ -22,6 +22,7 @@
     "host": "example.org",
     "port": 80,
     "path": "/",
-    "hostHeader": "example.org"
+    "hostHeader": null,
+    "receiveTimeout": 300
   }]
 }
