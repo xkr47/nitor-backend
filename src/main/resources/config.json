@@ -17,6 +17,11 @@
       "admin": "nimda"
     }
   },
+  "static": [{
+    "path": "/static/*",
+    "cacheTimeout": 1800,
+    "dir": "webroot"
+  }],
   "proxy": [{
     "route": "/proxy/*",
     "host": "example.org",
