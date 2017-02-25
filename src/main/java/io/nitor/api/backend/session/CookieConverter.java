@@ -15,7 +15,10 @@
  */
 package io.nitor.api.backend.session;
 
+import io.nitor.api.backend.auth.CustomPac4jSecurityHandler;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Cookie;
 
 import java.util.Base64;
@@ -39,6 +42,8 @@ import static java.util.Base64.getUrlDecoder;
 import static java.util.Base64.getUrlEncoder;
 
 public class CookieConverter {
+    private static final Logger LOG = LoggerFactory.getLogger(CookieConverter.class);
+
     private static final Base64.Encoder BASE64ENC = getUrlEncoder().withoutPadding();
     private static final Base64.Decoder BASE64DEC = getUrlDecoder();
     private static final int MAX_RANDOM_PADDING = 4;
@@ -110,16 +115,25 @@ public class CookieConverter {
 
         session = new StatelessSession();
 
-        byte[] encrypted = BASE64DEC.decode(value);
-        byte[] decrypted = encryptor.decrypt(encrypted);
-        byte[] cookieBytes = decompress(decrypted);
+        try {
+            byte[] encrypted = BASE64DEC.decode(value);
+            byte[] decrypted = encryptor.decrypt(encrypted);
+            byte[] cookieBytes = decompress(decrypted);
 
-        int pos = skipRandomPadding(cookieBytes);
-        int dataLength = read16(cookieBytes, pos); pos += 2;
-        session.contextHash = read32(cookieBytes, pos) - COOKIE_VERSION; pos += 4;
-        session.sessionData.putAll(parseSessionData(new String(cookieBytes, pos, dataLength, UTF_8))); pos += dataLength;
-        while (pos < cookieBytes.length) {
-            session.sourceIpSessionExpirationTimes.put(read32(cookieBytes, pos), read32(cookieBytes, pos + 4)); pos += 8;
+            int pos = skipRandomPadding(cookieBytes);
+            int dataLength = read16(cookieBytes, pos);
+            pos += 2;
+            session.contextHash = read32(cookieBytes, pos) - COOKIE_VERSION;
+            pos += 4;
+            session.sessionData.putAll(parseSessionData(new String(cookieBytes, pos, dataLength, UTF_8)));
+            pos += dataLength;
+            while (pos < cookieBytes.length) {
+                session.sourceIpSessionExpirationTimes.put(read32(cookieBytes, pos), read32(cookieBytes, pos + 4));
+                pos += 8;
+            }
+        } catch (Exception ex) {
+            LOG.warn("Invalid cookie", ex);
+            return null;
         }
 
         cookieCache.put(value, new StatelessSession(session));
