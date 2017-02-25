@@ -67,11 +67,6 @@ public class CustomPac4jSecurityHandler extends SecurityHandler {
                 return;
             }
 
-            LOG.info("Cookie authorised to view resource " + routingContext.request().path());
-
-            // cleanup unwanted session cookie
-            routingContext.removeCookie("vertx-web.session");
-
             routingContext.next();
             return;
         }
