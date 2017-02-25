@@ -16,9 +16,12 @@
 package io.nitor.api.backend;
 
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.nitor.api.backend.auth.SetupAzureAdConnectAuth;
+import io.nitor.api.backend.auth.SetupOpenIdConnectAuth;
 import io.nitor.api.backend.auth.SimpleConfigAuthProvider;
 import io.nitor.api.backend.proxy.Proxy.ProxyException;
 import io.nitor.api.backend.proxy.SetupProxy;
+import io.nitor.api.backend.session.CookieSessionHandler;
 import io.nitor.api.backend.tls.SetupHttpServerOptions;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.http.HttpServerOptions;
@@ -35,7 +38,6 @@ import org.apache.logging.log4j.Logger;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static com.nitorcreations.core.utils.KillProcess.killProcessUsingPort;
@@ -117,10 +119,27 @@ public class NitorBackend extends AbstractVerticle
                     } catch (SSLPeerUnverifiedException e) {
                         routingContext.response().setStatusCode(HttpResponseStatus.FORBIDDEN.code());
                         routingContext.response().end();
-                        logger.info("Rejected request that was missing vavlid client certificate from ip {}: {}", routingContext.request().remoteAddress(), e.getMessage());
+                        logger.info("Rejected request that was missing valid client certificate from ip {}: {}", routingContext.request().remoteAddress(), e.getMessage());
                     }
                 });
             }
+        }
+
+        String publicURI = config().getString("publicURI", "https://localhost:" + listenPort);
+        if (publicURI.endsWith("/")) {
+            publicURI = publicURI.substring(0, publicURI.length() - 1);
+        }
+
+        JsonObject oidcAuth = config().getJsonObject("oidcAuth");
+        if (oidcAuth != null) {
+            SetupOpenIdConnectAuth.setupOpenIdConnect(oidcAuth, router, vertx, publicURI);
+        }
+
+        JsonObject adAuth = config().getJsonObject("adAuth");
+        if (adAuth != null) {
+            JsonObject sessionConf = config().getJsonObject("session", new JsonObject());
+            CookieSessionHandler sessionHandler = new CookieSessionHandler(sessionConf);
+            SetupAzureAdConnectAuth.setupAzureAd(adAuth, router, vertx, publicURI, sessionHandler);
         }
 
         JsonObject basicAuth = config().getJsonObject("basicAuth");

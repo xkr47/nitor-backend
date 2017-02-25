@@ -11,7 +11,7 @@
   },
   "basicAuth": {
     "path": "/*",
-    "real": "nitor",
+    "realm": "nitor",
     "users": {
       "test": "test",
       "admin": "nimda"
@@ -22,6 +22,38 @@
     "cacheTimeout": 1800,
     "dir": "webroot"
   }],
+  "oidcAuth": {
+    "path": "/*",
+    "clientId": "",
+    "clientSecret": "",
+    "configurationURI": "https://login.microsoftonline.com/organizations/v2.0/.well-known/openid-configuration",
+    "scope": "openid profile"
+  },
+  "adAuth": {
+    "path": "/*",
+    "clientId": "",
+    "clientSecret": "",
+    "configurationURI": "https://login.microsoftonline.com/organizations/v2.0/.well-known/openid-configuration",
+    "scope": "openid profile https://graph.microsoft.com/user.read",
+    "customParam": {
+      "domain_hint": "organizations"
+    },
+    "graphQueryURI": "https://graph.microsoft.com/beta/me?$expand=memberOf",
+    "headerMappings": {
+      "x-auth-name": ".displayName",
+      "x-auth-mail": ".mail",
+      "x-auth-phone": ".mobilePhone",
+      "x-auth-groups": ".memberOf[].mailNickname"
+    },
+    "requiredHeaders": {
+      "x-auth-groups": "(^|.*,)admin(,.*|$)"
+    }
+  },
+  "session": {
+    "serverName": "",
+    "secretFile": ".secret",
+    "sessionAge": 1209600
+  },
   "proxy": [{
     "route": "/proxy/*",
     "host": "example.org",
