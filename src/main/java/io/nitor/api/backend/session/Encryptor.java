@@ -56,12 +56,14 @@ public class Encryptor {
     private final byte[] aesAuthData;
 
     static {
-        SecureRandom r;
+        SecureRandom r = new SecureRandom();
+        /*
         try {
             r = SecureRandom.getInstanceStrong();
         } catch (NoSuchAlgorithmException e) {
             r = new SecureRandom();
         }
+        */
         try {
             // create instance synchronously for eager failure
             Cipher.getInstance(CRYPTO_ALGORITHM);
