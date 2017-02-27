@@ -63,7 +63,7 @@ public class DefaultHttpActionAdapter implements HttpActionAdapter<Void, VertxWe
 
     protected void redirect(final String location, final VertxWebContext webContext) {
         webContext.setResponseStatus(HttpConstants.TEMP_REDIRECT);
-        webContext.setResponseHeader(HttpConstants.LOCATION_HEADER, location);
+        //webContext.setResponseHeader(HttpConstants.LOCATION_HEADER, location);
         webContext.completeResponse();
     }
 
