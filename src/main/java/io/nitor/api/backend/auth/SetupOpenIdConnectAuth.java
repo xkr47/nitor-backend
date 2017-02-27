@@ -49,7 +49,7 @@ public class SetupOpenIdConnectAuth {
         oidcConfiguration.setScope(oidcAuth.getString("scope", "openid email profile"));
         oidcConfiguration.setClientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST);
         oidcConfiguration.setPreferredJwsAlgorithm(JWSAlgorithm.RS256);
-        //oidcConfiguration.setResponseType("code");
+        oidcConfiguration.setResponseType("code");
         oidcAuth.getJsonObject("customParam", new JsonObject()).forEach(e -> oidcConfiguration.addCustomParam(e.getKey(), e.getValue().toString()));
         return oidcConfiguration;
     }
