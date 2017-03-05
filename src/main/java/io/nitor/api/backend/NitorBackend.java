@@ -159,6 +159,7 @@ public class NitorBackend extends AbstractVerticle
                 JsonObject conf = (JsonObject) c;
                 router.route(conf.getString("path")).handler(
                         StaticHandler.create()
+                                .setFilesReadOnly(conf.getBoolean("readOnly", true))
                                 .setAllowRootFileSystemAccess(true)
                                 .setWebRoot(conf.getString("dir", "."))
                                 .setCacheEntryTimeout(conf.getInteger("cacheTimeout", (int) MINUTES.toSeconds(30)))
