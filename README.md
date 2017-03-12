@@ -118,6 +118,35 @@ The `route` specifies where the proxy files are exposed. (Note: different from a
 The `hostHeader` allows setting a `Host` header into the outgoing http request - the original request information is available in `X-Host`, `X-Forwarded-For` and `X-Forwarded-Proto` headers.
 The `receiveTimeout` does not seem to work yet correctly.
 
+### Proxying to another HTTP service
+A list of customization scripts can be provided.
+```json
+  "customize": [{
+    "path": "/*",
+    "jsFile": "custom.js"
+  }]
+```
+
+The `path` specifies which requests are processed by the customization script.
+The `jsFile` specifies which javascript file that customize the operation. The script can mostly only customize the request and response headers, not the body.
+
+### Example Script
+```js
+var api = {};
+
+api.handleRequest = function(request, context) {
+   console.log('REQ:', request.headers());
+}
+
+api.handleResponse = function(response, context) {
+    console.log('RES:', response.headers());
+}
+
+console.log('js customizations loaded');
+
+module.exports = api;
+```
+
 ### Azure AD authentication and user account information forwarding
 A list of static file locations can be provided.
 ```json
