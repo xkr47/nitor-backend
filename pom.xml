@@ -258,7 +258,7 @@
       <groupId>io.vertx</groupId>
       <artifactId>vertx-codegen</artifactId>
       <version>${vertx.version}</version>
-      <scope>test</scope>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
   <build>
