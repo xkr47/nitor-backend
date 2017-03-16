@@ -21,6 +21,7 @@ import io.nitor.api.backend.auth.SetupOpenIdConnectAuth;
 import io.nitor.api.backend.auth.SimpleConfigAuthProvider;
 import io.nitor.api.backend.proxy.Proxy.ProxyException;
 import io.nitor.api.backend.proxy.SetupProxy;
+import io.nitor.api.backend.s3.S3Handler;
 import io.nitor.api.backend.session.CookieSessionHandler;
 import io.nitor.api.backend.tls.SetupHttpServerOptions;
 import io.vertx.core.AbstractVerticle;
@@ -28,6 +29,7 @@ import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.Route;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.AuthHandler;
 import io.vertx.ext.web.handler.BasicAuthHandler;
@@ -166,6 +168,28 @@ public class NitorBackend extends AbstractVerticle
                                 .setCachingEnabled(cacheTimeout > 0)
                                 .setCacheEntryTimeout(cacheTimeout)
                 );
+            });
+        }
+
+        JsonArray s3Conf = config().getJsonArray("s3");
+        if (s3Conf != null) {
+            s3Conf.forEach(c -> {
+                JsonObject conf = (JsonObject) c;
+                JsonArray operations = conf.getJsonArray("operations", new JsonArray().add("GET"));
+                Route path;
+                String pathPrefix = conf.getString("path");
+                if (operations.contains("GET") && operations.size() == 1) {
+                    path = router.get(pathPrefix);
+                } else {
+                    path = router.route(pathPrefix);
+                }
+                if (pathPrefix.endsWith("*")) {
+                    pathPrefix = pathPrefix.substring(0, pathPrefix.length() - 1);
+                }
+                if (pathPrefix.endsWith("/")) {
+                    pathPrefix = pathPrefix.substring(0, pathPrefix.length() - 1);
+                }
+                path.handler(new S3Handler(vertx, conf, pathPrefix.length()));
             });
         }
 

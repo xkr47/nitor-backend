@@ -80,7 +80,28 @@ The `path` specifies where the static files are exposed.
 The `dir` specifies where the static files are loaded from.
 Setting `readOnly` to false stops caching that assumes that files do not change during the lifetime of the service.
 
-### Serving static files
+### Serving files from S3
+A list of s3 proxies can be provided.
+```json
+  "s3": [{
+    "path": "/s3/*",
+    "bucket": "webroot",
+    "basePath": "pictures/big",
+    "region": "eu-central-1",
+    "basePath": "pictures/big",
+    "accessKey": "xyz",
+    "secretKey": "123"
+  }]
+```
+The `path` specifies where the static files are exposed.
+The `bucket` specifies where the S3 bucket.
+The optional `basePath` specifies where the path inside the bucket (cannot be escaped).
+The optional `region` specifies the S3 region. Uses environmental variable `AWS_DEFAULT_REGION` or region of current instance if missing.
+The optional `accessKey` specifies the S3 access. Uses environmental variable `AWS_ACCESS_KEY_ID` or instance profile rights if allowed.
+The optional `secretKey` specifies the S3 access. Uses environmental variable `AWS_SECRET_ACCESS_KEY` or instance profile rights if allowed.
+The environmental variable `AWS_SESSION_TOKEN` or instance profile rights are required if the access keys are temporary.
+
+### Proxying to another HTTP service
 A list of static file locations can be provided.
 ```json
   "proxy": [{

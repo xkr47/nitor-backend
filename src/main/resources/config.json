@@ -5,6 +5,7 @@
   "clientAuth": null,
   "basicAuth": null,
   "static": [],
+  "s3": [],
   "oidcAuth": null,
   "adAuth": null,
   "session": null,
