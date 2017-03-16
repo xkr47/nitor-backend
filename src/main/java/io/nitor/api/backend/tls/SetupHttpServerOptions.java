@@ -48,37 +48,43 @@ public class SetupHttpServerOptions {
                 .setCompressionSupported(false) // otherwise it automatically compresses based on response headers even if pre-compressed with e.g. proxy
                 .setUsePooledBuffers(true)
                 // TODO: upcoming in vertx 3.4+ .setCompressionLevel(2)
-                .setIdleTimeout(config.getInteger("idleTimeout", (int) MINUTES.toSeconds(10)))
-                .setSsl(true)
-                // server side certificate
-                .setPemKeyCertOptions(new PemKeyCertOptions()
-                        .setKeyPath(tls.getString("serverKey"))
-                        .setCertPath(tls.getString("serverCert")))
-                // TLS tuning
-                .addEnabledSecureTransportProtocol("TLSv1.2")
-                .addEnabledSecureTransportProtocol("TLSv1.3");
+                .setIdleTimeout(config.getInteger("idleTimeout", (int) MINUTES.toSeconds(10)));
+
         if (!config.getBoolean("http2", true)) {
             httpOptions.setAlpnVersions(asList(HTTP_1_1));
         }
-        JsonObject clientAuth = config.getJsonObject("clientAuth");
-        if (clientAuth != null && clientAuth.getString("clientChain") != null) {
-            // client side certificate
+
+        if (tls != null) {
+            httpOptions
+                    .setSsl(true)
+                    // server side certificate
+                    .setPemKeyCertOptions(new PemKeyCertOptions()
+                            .setKeyPath(tls.getString("serverKey"))
+                            .setCertPath(tls.getString("serverCert")))
+                    // TLS tuning
+                    .addEnabledSecureTransportProtocol("TLSv1.2")
+                    .addEnabledSecureTransportProtocol("TLSv1.3");
+
+            JsonObject clientAuth = config.getJsonObject("clientAuth");
+            if (httpOptions.isSsl() && clientAuth != null && clientAuth.getString("clientChain") != null) {
+                // client side certificate
                 httpOptions.setClientAuth(REQUEST)
-                    .setTrustOptions(new PemTrustOptions()
-                            .addCertPath(clientAuth.getString("clientChain"))
-                    );
-        }
-        if (config.getBoolean("useNativeOpenSsl")) {
-            httpOptions
-                    .setUseAlpn(true)
-                    .setSslEngineOptions(new OpenSSLEngineOptions());
-            cipherSuites.stream().map(SetupHttpServerOptions::javaCipherNameToOpenSSLName)
-                    .forEach(httpOptions::addEnabledCipherSuite);
-        } else {
-            httpOptions
-                    .setUseAlpn(DynamicAgent.enableJettyAlpn())
-                    .setJdkSslEngineOptions(new JdkSSLEngineOptions());
-            cipherSuites.forEach(httpOptions::addEnabledCipherSuite);
+                        .setTrustOptions(new PemTrustOptions()
+                                .addCertPath(clientAuth.getString("clientChain"))
+                        );
+            }
+            if (config.getBoolean("useNativeOpenSsl")) {
+                httpOptions
+                        .setUseAlpn(true)
+                        .setSslEngineOptions(new OpenSSLEngineOptions());
+                cipherSuites.stream().map(SetupHttpServerOptions::javaCipherNameToOpenSSLName)
+                        .forEach(httpOptions::addEnabledCipherSuite);
+            } else {
+                httpOptions
+                        .setUseAlpn(DynamicAgent.enableJettyAlpn())
+                        .setJdkSslEngineOptions(new JdkSSLEngineOptions());
+                cipherSuites.forEach(httpOptions::addEnabledCipherSuite);
+            }
         }
 
         return httpOptions;
