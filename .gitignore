@@ -3,8 +3,8 @@ target
 /*.log*
 *~
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
+# idea
+backend.iml
 
 # Package Files #
 *.jar
