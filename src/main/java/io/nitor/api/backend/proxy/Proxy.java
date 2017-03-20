@@ -16,6 +16,8 @@
 package io.nitor.api.backend.proxy;
 
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.nitor.vertx.util.LazyHandlerWrapper;
+import io.nitor.vertx.util.ReadStreamWrapper;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.VertxException;
@@ -34,6 +36,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import static io.vertx.core.http.HttpVersion.HTTP_2;
 import static java.util.Arrays.asList;
@@ -43,6 +47,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * Reverse HTTP proxy, ported to Java from https://github.com/xkr47/vhostproxy4/
  */
 public class Proxy implements Handler<RoutingContext> {
+    private static final Logger log = LogManager.getLogger(Proxy.class);
 
     private final HttpClient client;
     private final TargetResolver targetResolver;
@@ -170,6 +175,9 @@ public class Proxy implements Handler<RoutingContext> {
     static class State {
         boolean clientFinished;
         boolean serverFinished;
+        boolean expecting100;
+        boolean receivedRequestBodyBefore100;
+        boolean requestComplete;
     }
 
     public void handle(RoutingContext routingContext) {
@@ -280,6 +288,8 @@ public class Proxy implements Handler<RoutingContext> {
                 });
                 return;
             }
+            String expectStr;
+            state.expecting100 = null != (expectStr = sreq.headers().get("expect")) && expectStr.equalsIgnoreCase("100-continue");
             HttpClientRequest creq = client.request(sreq.method(), nextHop.socketPort, nextHop.socketHost, nextHop.uri);
             creq.setTimeout(SECONDS.toMillis(clientReceiveTimeout));
             creq.handler(cres -> {
@@ -300,6 +310,15 @@ public class Proxy implements Handler<RoutingContext> {
                     sres.headers().add("keep-alive", keepAliveHeaderValue);
                     sres.headers().add("connection", "keep-alive");
                 }
+                final boolean reqCompletedBeforeResponse = state.requestComplete;
+                if (state.expecting100) {
+                    log.info("Got " + cres.statusCode() + " instead of 100 Continue");
+                    if (!isHTTP2 && state.receivedRequestBodyBefore100 && !reqCompletedBeforeResponse) {
+                        // TODO investigate whether vertx is able to handle the server request correctly without us closing the conn
+                        log.info("Client had started streaming data anyway, so request message boundary is lost. Continue streaming, but close server connection after response complete.");
+                        sres.headers().add("connection", "close");
+                    }
+                }
                 if (!headers.contains("content-length")) {
                     sres.setChunked(true);
                 }
@@ -310,6 +329,10 @@ public class Proxy implements Handler<RoutingContext> {
                     if (!state.serverFinished) {
                         state.serverFinished = true;
                         sres.end();
+                    }
+                    if (state.expecting100 && state.receivedRequestBodyBefore100 && !reqCompletedBeforeResponse) {
+                        log.info("Client had started streaming data anyway, so request message boundary is lost. Close client connection.");
+                        creq.connection().close();
                     }
                 });
                 pump.start(cres, sres, tracer);
@@ -348,6 +371,7 @@ public class Proxy implements Handler<RoutingContext> {
             });
             tracer.outgoingRequestInitial(creq);
             if (sreq.isEnded()) {
+                state.requestComplete = true;
                 Buffer body = routingContext.getBody();
                 if (body == null || body.length() == 0) {
                     creq.end();
@@ -360,6 +384,7 @@ public class Proxy implements Handler<RoutingContext> {
                 tracer.incomingRequestEnd();
             } else {
                 sreq.endHandler(v -> {
+                    state.requestComplete = true;
                     try {
                         creq.end();
                     } catch (IllegalStateException ex) {
@@ -367,7 +392,45 @@ public class Proxy implements Handler<RoutingContext> {
                     }
                     tracer.incomingRequestEnd();
                 });
-                pump.start(sreq, creq, tracer);
+
+                ReadStream<Buffer> sreqStream;
+                if (state.expecting100) {
+                    log.info("Expect: 100");
+                    creq.continueHandler(v -> {
+                        // no longer expecting 100, it's like a normal not-expecting-100 request from now on
+                        state.expecting100 = false;
+                        // since we received 100 Continue, we know the server agrees to accept all the request body, so we can assume we are forgiven for sending data early
+                        state.receivedRequestBodyBefore100 = false;
+                        log.info("Got 100, propagating");
+                        sres.writeContinue();
+                    });
+                    // in this case we must flush request headers before the body is sent
+                    creq.sendHead();
+                    sreqStream = new ReadStreamWrapper<Buffer>(sreq) {
+                        final LazyHandlerWrapper<Buffer> handlerWrapper = new LazyHandlerWrapper<Buffer>(super::handler, null) {
+                            @Override
+                            public void handle(Buffer event) {
+                                log.info("Got first request body chunk");
+                                if (state.expecting100) {
+                                    log.info("Got request body before '100 Continue'");
+                                    // data received despite not having yet recived 100-continue
+                                    state.receivedRequestBodyBefore100 = true;
+                                }
+                                deactivate();
+                                wrapped.handle(event);
+                            }
+                        };
+
+                        @Override
+                        public ReadStream<Buffer> handler(Handler<Buffer> handler) {
+                            return handlerWrapper.handler(handler, this);
+                        }
+                    };
+                } else {
+                    log.info("Immediate send");
+                    sreqStream = sreq;
+                }
+                pump.start(sreqStream, creq, tracer);
             }
         });
     }
