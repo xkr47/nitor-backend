@@ -15,6 +15,11 @@
  */
 package io.nitor.api.backend.s3;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.regions.DefaultAwsRegionProviderChain;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
@@ -48,33 +53,26 @@ public class S3Handler implements Handler<RoutingContext> {
 
     public S3Handler(Vertx vertx, JsonObject conf, int routeLength) {
         this.routeLength = routeLength;
-        SyncHttp syncHttp = new SyncHttp();
 
-        String region = conf.getString("region", getenv("AWS_DEFAULT_REGION"));
+        String region = conf.getString("region");
         if (region == null) {
-            region = new AwsInstanceInfo(syncHttp).getRegion();
-            logger.info("Using s3 region " + region);
+            region = new DefaultAwsRegionProviderChain().getRegion();
         }
         this.s3Host = ("us-east-1".equals(region) ? "s3" : "s3-" + region) + ".amazonaws.com";
 
         String bucket = conf.getString("bucket");
         basePath = '/' + bucket + '/' + conf.getString("basePath", "");
 
-        AWSSecrets confSecrets = new AWSSecrets(conf.getString("accessKey"), conf.getString("secretKey"), null);
-        Supplier<AWSSecrets> secretSupplier;
-        if (confSecrets.isValid()) {
-            secretSupplier = () -> confSecrets;
+        AWSCredentialsProvider secretsProvider;
+        String accessKey = conf.getString("accessKey");
+        String secretKey = conf.getString("secretKey");
+        if (accessKey != null && secretKey != null) {
+            secretsProvider = new AWSStaticCredentialsProvider(new BasicAWSCredentials(accessKey, secretKey));
         } else {
-            AWSSecrets envSecrets = new AWSSecrets(getenv("AWS_ACCESS_KEY_ID"), getenv("AWS_SECRET_ACCESS_KEY"), getenv("AWS_SESSION_TOKEN"));
-            if (envSecrets.isValid()) {
-                secretSupplier = () -> envSecrets;
-            } else {
-                logger.info("Using instance profile to fetch secrets");
-                secretSupplier = new AWSInstanceSecrets(syncHttp);
-            }
+            secretsProvider = new DefaultAWSCredentialsProviderChain();
         }
 
-        signer = new AWSRequestSigner(region, s3Host, secretSupplier);
+        signer = new AWSRequestSigner(region, s3Host, secretsProvider);
 
         http = vertx.createHttpClient(new HttpClientOptions()
                 .setConnectTimeout((int) SECONDS.toMillis(conf.getInteger("connectTimeout", 5)))

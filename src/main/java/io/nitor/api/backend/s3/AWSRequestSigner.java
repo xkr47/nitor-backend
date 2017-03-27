@@ -15,6 +15,9 @@
  */
 package io.nitor.api.backend.s3;
 
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.AWSSessionCredentials;
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpServerRequest;
@@ -49,33 +52,34 @@ public class AWSRequestSigner {
     private final String region;
     private final String service;
     private final String signingRegion;
-    private final Supplier<AWSSecrets> secretSupplier;
+    private final AWSCredentialsProvider secretsProvider;
     private final Clock clock;
 
     private byte[] cachedSigningKey;
     private String cachedSigningKeyDate;
 
-    public AWSRequestSigner(String region, String serviceHost, Supplier<AWSSecrets> secretSupplier) {
-        this(region, serviceHost, secretSupplier, "s3", systemUTC());
+    public AWSRequestSigner(String region, String serviceHost, AWSCredentialsProvider secretsProvider) {
+        this(region, serviceHost, secretsProvider, "s3", systemUTC());
     }
 
-    public AWSRequestSigner(String region, String serviceHost, Supplier<AWSSecrets> secretSupplier, String service, Clock clock) {
+    public AWSRequestSigner(String region, String serviceHost, AWSCredentialsProvider secretsProvider, String service, Clock clock) {
         this.serviceHost = serviceHost;
         this.region = region;
+        this.secretsProvider = secretsProvider;
         this.service = service;
         this.signingRegion = "/" + region + "/" + service + "/aws4_request";
-        this.secretSupplier = secretSupplier;
         this.clock = clock;
     }
 
-    private byte[] signingKey(Mac hmac, String date, AWSSecrets secrets) {
+    private byte[] signingKey(Mac hmac, String date, AWSCredentials secrets) {
         synchronized (this) {
             if (date.equals(cachedSigningKeyDate)) {
                 return cachedSigningKey;
             }
             cachedSigningKeyDate = date;
 
-            byte[] dateKey = hmacSHA256(hmac, secrets.secretKey, date);
+            byte[] secret = ("AWS4" + secrets.getAWSSecretKey()).getBytes(ISO_8859_1);
+            byte[] dateKey = hmacSHA256(hmac, secret, date);
             byte[] dateRegionKey = hmacSHA256(hmac, dateKey, region);
             byte[] dateRegionService = hmacSHA256(hmac, dateRegionKey, service);
             cachedSigningKey = hmacSHA256(hmac, dateRegionService, "aws4_request");
@@ -107,7 +111,7 @@ public class AWSRequestSigner {
         String dateTime = dateTimeFormat.format(clock.instant());
         String date = dateTime.substring(0, 8);
 
-        AWSSecrets secrets = secretSupplier.get();
+        AWSCredentials secrets = secretsProvider.getCredentials();
 
         StringBuilder signedHeaders = new StringBuilder(64);
         StringBuilder sb = new StringBuilder(256);
@@ -120,8 +124,8 @@ public class AWSRequestSigner {
         putHeader(headers, sb, signedHeaders, "range", sreq);
         putHeader(headers, sb, signedHeaders, "x-amz-content-sha256", contentHash);
         putHeader(headers, sb, signedHeaders, "x-amz-date", dateTime);
-        if (secrets.sessionToken != null) {
-            putHeader(headers, sb, signedHeaders, "x-amz-security-token", secrets.sessionToken);
+        if (secrets instanceof AWSSessionCredentials) {
+            putHeader(headers, sb, signedHeaders, "x-amz-security-token", ((AWSSessionCredentials) secrets).getSessionToken());
         }
         signedHeaders.setLength(signedHeaders.length() - 1);
         sb.append('\n').append(signedHeaders).append('\n');
@@ -142,7 +146,7 @@ public class AWSRequestSigner {
         sb.setLength(0);
         sb.append("AWS4-HMAC-SHA256 ")
                 .append("Credential=")
-                .append(secrets.accessKey)
+                .append(secrets.getAWSAccessKeyId())
                 .append('/')
                 .append(date)
                 .append(signingRegion)

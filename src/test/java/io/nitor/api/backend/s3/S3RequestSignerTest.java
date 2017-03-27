@@ -15,6 +15,8 @@
  */
 package io.nitor.api.backend.s3;
 
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
 import com.example.mockito.MockitoExtension;
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpClientRequest;
@@ -39,7 +41,7 @@ class S3RequestSignerTest {
     void copyHeadersAndSign(@Mock HttpServerRequest sreq, @Mock HttpClientRequest creq, @Mock MultiMap outgoingHeaders) {
         ZoneId utc = ZoneId.of("UTC");
         AWSRequestSigner s = new AWSRequestSigner("us-east-1", "examplebucket.s3.amazonaws.com",
-                () -> new AWSSecrets("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", null),
+                new AWSStaticCredentialsProvider(new BasicAWSCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")),
                 "s3",
                 fixed(ZonedDateTime.of(2013,5, 24, 0, 0, 0, 0, utc).toInstant(), utc));
 
