@@ -15,12 +15,12 @@
  */
 package io.nitor.api.backend.session;
 
-import io.nitor.api.backend.auth.CustomPac4jSecurityHandler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Cookie;
 
+import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,13 +28,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
-import static io.nitor.api.backend.session.ByteHelpers.read16;
-import static io.nitor.api.backend.session.ByteHelpers.read32;
-import static io.nitor.api.backend.session.ByteHelpers.write16;
-import static io.nitor.api.backend.session.ByteHelpers.write32;
+import static io.nitor.api.backend.session.ByteHelpers.*;
 import static io.nitor.api.backend.session.Compressor.compress;
 import static io.nitor.api.backend.session.Compressor.decompress;
-import static io.nitor.api.backend.session.Encryptor.RANDOM;
 import static io.vertx.ext.web.Cookie.cookie;
 import static java.lang.System.arraycopy;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -43,6 +39,8 @@ import static java.util.Base64.getUrlEncoder;
 
 public class CookieConverter {
     private static final Logger LOG = LoggerFactory.getLogger(CookieConverter.class);
+
+    private static ThreadLocal<SecureRandom> RANDOM = ThreadLocal.withInitial(SecureRandom::new);
 
     private static final Base64.Encoder BASE64ENC = getUrlEncoder().withoutPadding();
     private static final Base64.Decoder BASE64DEC = getUrlDecoder();
@@ -90,8 +88,9 @@ public class CookieConverter {
     }
 
     private byte[] generateRandomPaddingBytes() {
-        byte[] randomPadding = new byte[1 + RANDOM.nextInt(MAX_RANDOM_PADDING)];
-        RANDOM.nextBytes(randomPadding);
+        SecureRandom random = RANDOM.get();
+        byte[] randomPadding = new byte[1 + random.nextInt(MAX_RANDOM_PADDING)];
+        random.nextBytes(randomPadding);
         for (int i = 0; i < randomPadding.length - 1; ++i) {
             randomPadding[i] &= 0xFE;
         }

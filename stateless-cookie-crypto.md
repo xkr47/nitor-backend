@@ -31,7 +31,7 @@ Question: Should server send remove-cookie for oldest cookies to the client if t
 
 ## crypto
 
-Encryption will be done with AESGCM which is an AEAD algorithm that provides both verification and encyrption at the same time.
+Encryption will be done with AES in CBC mode with a changing initialization vector and both the ciphertext and and the iv will be protected from modification with a SHA-512 HMAC.
 The speed (or slowness) of the chosen algorithm will not matter since the cookies will be relatively long lived and the server will cache the seen valid cookies in memory.
 
 *Q: what about often-changing "custom application state"; some requests may specify some previous cookie value; should we perhaps keep the last two(?) cookie values in the cache?*
@@ -43,7 +43,7 @@ Deflate is better than gzip because deflate omits the header and checksum. Espec
 
 ## final cookie encoding
 
-`base64(AESGCM(deflate(utf8bytes("key=value|key2=value|..."))))`
+`base64(AESCBCwithSHA512HMAC(deflate(utf8bytes("key=value|key2=value|..."))))`
 
 ## security evaluation
 
