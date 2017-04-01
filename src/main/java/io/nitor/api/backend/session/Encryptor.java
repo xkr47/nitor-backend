@@ -99,7 +99,10 @@ public class Encryptor {
                 write(secretFile, secret, CREATE, TRUNCATE_EXISTING, DSYNC);
             }
             byte[] aesKey = copyOf(secret, AES_KEY_LENGTH);
-            byte[] aesAuthData = copyOfRange(secret, AES_KEY_LENGTH, AES_AUTH_LENGTH);
+            byte[] aesAuthData = copyOfRange(secret, AES_KEY_LENGTH, AES_KEY_LENGTH + AES_AUTH_LENGTH);
+            if (aesKey.length != AES_KEY_LENGTH || aesAuthData.length != AES_AUTH_LENGTH) {
+                throw new RuntimeException("Wrong length of key or auth data");
+            }
             this.secretKeySpec = new SecretKeySpec(aesKey, "AES");
             this.aesAuthData = aesAuthData;
         } catch (Exception e) {
