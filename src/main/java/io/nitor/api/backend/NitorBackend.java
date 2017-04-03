@@ -19,6 +19,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.nitor.api.backend.auth.SetupAzureAdConnectAuth;
 import io.nitor.api.backend.auth.SetupOpenIdConnectAuth;
 import io.nitor.api.backend.auth.SimpleConfigAuthProvider;
+import io.nitor.api.backend.js.InlineJS;
 import io.nitor.api.backend.proxy.Proxy.ProxyException;
 import io.nitor.api.backend.proxy.SetupProxy;
 import io.nitor.api.backend.s3.S3Handler;
@@ -82,7 +83,7 @@ public class NitorBackend extends AbstractVerticle
     }
 
     @Override
-    public void start() {
+    public void start() throws Exception {
         vertx.exceptionHandler(e -> {
            logger.error("Fallback exception handler got", e);
         });
@@ -94,7 +95,9 @@ public class NitorBackend extends AbstractVerticle
         router.route().handler(new AccessLogHandler()::handle);
         router.route().handler(routingContext -> {
             HttpServerResponse resp = routingContext.response();
-            resp.putHeader("strict-transport-security", "max-age=31536000; includeSubDomains");
+            if (httpServerOptions.isSsl()) {
+                resp.putHeader("strict-transport-security", "max-age=31536000; includeSubDomains");
+            }
             resp.putHeader("x-frame-options", "DENY");
             routingContext.next();
         });
@@ -148,6 +151,19 @@ public class NitorBackend extends AbstractVerticle
         if (basicAuth != null) {
             AuthHandler basicAuthHandler = BasicAuthHandler.create(new SimpleConfigAuthProvider(basicAuth.getJsonObject("users")), basicAuth.getString("realm", "nitor"));
             router.route(basicAuth.getString("path", "/*")).handler(basicAuthHandler);
+        }
+
+        JsonArray customizeConf = config().getJsonArray("customize");
+        if (customizeConf != null) {
+            customizeConf.forEach(c -> {
+                JsonObject conf = (JsonObject) c;
+                InlineJS inlineJs = new InlineJS(vertx, conf.getString("jsFile", "custom.js"));
+                router.route(conf.getString("path")).handler(ctx -> {
+                    inlineJs.call("handleRequest", ctx.request(), ctx);
+                    ctx.addHeadersEndHandler((v) -> inlineJs.call("handleResponse", ctx.response(), ctx));
+                    ctx.next();
+                });
+            });
         }
 
         JsonArray proxyConf = config().getJsonArray("proxy");
@@ -222,5 +238,4 @@ public class NitorBackend extends AbstractVerticle
                 .requestHandler(router::accept)
                 .listen(listenPort);
     }
-
 }
