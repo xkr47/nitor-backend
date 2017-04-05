@@ -18,70 +18,37 @@ package io.nitor.api.backend.session;
 import io.vertx.core.json.JsonObject;
 
 import javax.crypto.Cipher;
-import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.Mac;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.NoSuchAlgorithmException;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.nitor.api.backend.session.ByteHelpers.write32;
-import static java.lang.System.currentTimeMillis;
-import static java.nio.file.Files.isReadable;
-import static java.nio.file.Files.readAllBytes;
-import static java.nio.file.Files.write;
-import static java.nio.file.StandardOpenOption.CREATE;
-import static java.nio.file.StandardOpenOption.DSYNC;
-import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.nio.file.Files.*;
+import static java.nio.file.StandardOpenOption.*;
 import static java.util.Arrays.copyOf;
 import static java.util.Arrays.copyOfRange;
 import static javax.crypto.Cipher.DECRYPT_MODE;
 import static javax.crypto.Cipher.ENCRYPT_MODE;
 
 public class Encryptor {
-    private static final String CRYPTO_ALGORITHM = "AES_256/GCM/NoPadding";
-    private static final int AUTH_TAG_LENGTH = 128;
-    private static final int NONCE_LENGTH = 12;
+    private static final String CRYPTO_ALGORITHM = "AES/CBC/PKCS5Padding";
+    private static final String MAC_ALGORITHM = "HmacSHA512";
+    private static final int MAC_LENGTH = 64;
+    private static final int IV_LENGTH = 16;
     private static final int AES_KEY_LENGTH = 32;
     private static final int AES_AUTH_LENGTH = 32;
 
-    private static final ThreadLocal<Cipher> CIPHER_POOL;
-    public static final SecureRandom RANDOM;
-    private static final int NONCE_PART1_RAND;
-    private static final int NONCE_PART2_STARTUP;
-    private static final AtomicInteger NONCE_PART3_COUNTER = new AtomicInteger(0);
+    private static final ThreadLocal<CryptoState> CRYPTO_POOL = ThreadLocal.withInitial(Encryptor::buildCrypto);
 
-    private final SecretKeySpec secretKeySpec;
-    private final byte[] aesAuthData;
+    private final SecretKeySpec symmetricKey;
+    private final SecretKeySpec hmacSecret;
 
     static {
-        SecureRandom r = new SecureRandom();
-        /*
-        try {
-            r = SecureRandom.getInstanceStrong();
-        } catch (NoSuchAlgorithmException e) {
-            r = new SecureRandom();
-        }
-        */
-        try {
-            // create instance synchronously for eager failure
-            Cipher.getInstance(CRYPTO_ALGORITHM);
-        } catch (Exception e) {
-            throw new RuntimeException("Encryption algorithm not supported");
-        }
-        CIPHER_POOL = ThreadLocal.withInitial(() -> { try { return Cipher.getInstance(CRYPTO_ALGORITHM); } catch (Exception ex) { throw new RuntimeException(ex);}});
-        RANDOM = r;
-
-        /**
-         * FYI: If two different messages with same GCM nonce are ever obtained by one party then they can break the encyrption of all future and past messages.
-         * Uniqueness of the GCM nonce in this implementation applies as long as:
-         * 1) no two servers that start within the same 100ms window generate the same random 32bit number
-         * 2) no JVM encrypts more than 2^32 messages.
-         * - note the startup counter wraps around every 10 years, which increases the propability of random number collisions.
-         */
-        NONCE_PART1_RAND = RANDOM.nextInt();
-        NONCE_PART2_STARTUP = (int) (currentTimeMillis() / 100);
+        // create instance synchronously for eager failure
+        buildCrypto();
     }
 
     public Encryptor(JsonObject cryptConf) {
@@ -95,7 +62,7 @@ public class Encryptor {
                 }
             } else {
                 secret = new byte[AES_KEY_LENGTH + AES_AUTH_LENGTH];
-                RANDOM.nextBytes(secret);
+                CRYPTO_POOL.get().random.nextBytes(secret);
                 write(secretFile, secret, CREATE, TRUNCATE_EXISTING, DSYNC);
             }
             byte[] aesKey = copyOf(secret, AES_KEY_LENGTH);
@@ -103,8 +70,8 @@ public class Encryptor {
             if (aesKey.length != AES_KEY_LENGTH || aesAuthData.length != AES_AUTH_LENGTH) {
                 throw new RuntimeException("Wrong length of key or auth data");
             }
-            this.secretKeySpec = new SecretKeySpec(aesKey, "AES");
-            this.aesAuthData = aesAuthData;
+            this.symmetricKey = new SecretKeySpec(aesKey, "AES");
+            this.hmacSecret = new SecretKeySpec(aesAuthData, MAC_ALGORITHM);
         } catch (Exception e) {
             throw new RuntimeException("Could not create cipher", e);
         }
@@ -112,32 +79,65 @@ public class Encryptor {
 
     public byte[] decrypt(byte[] crypted) {
         try {
-            GCMParameterSpec paramSpec = new GCMParameterSpec(AUTH_TAG_LENGTH, crypted, 0, NONCE_LENGTH);
-            Cipher cipher = CIPHER_POOL.get();
-            cipher.init(DECRYPT_MODE, secretKeySpec, paramSpec);
-            cipher.updateAAD(aesAuthData);
-            byte[] decrypted = cipher.doFinal(crypted, NONCE_LENGTH, crypted.length - NONCE_LENGTH);
-            return decrypted;
+            CryptoState crypto = CRYPTO_POOL.get();
+
+            crypto.hmac.init(hmacSecret);
+            crypto.hmac.update(crypted, MAC_LENGTH, crypted.length - MAC_LENGTH);
+            if(!MessageDigest.isEqual(crypto.hmac.doFinal(), copyOf(crypted, MAC_LENGTH))) {
+                throw new Exception("Invalid mac");
+            }
+
+            crypto.cipher.init(DECRYPT_MODE, symmetricKey, new IvParameterSpec(crypted, MAC_LENGTH, IV_LENGTH));
+            return crypto.cipher.doFinal(crypted, MAC_LENGTH + IV_LENGTH, crypted.length - MAC_LENGTH - IV_LENGTH);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Decrypt failed"); // drop the root cause
         }
     }
 
     public byte[] encrypt(byte[] data) {
         try {
-            byte[] nonce = new byte[NONCE_LENGTH];
-            write32(nonce, 0, NONCE_PART1_RAND);
-            write32(nonce, 4, NONCE_PART2_STARTUP);
-            write32(nonce, 8, NONCE_PART3_COUNTER.incrementAndGet());
-            GCMParameterSpec paramSpec = new GCMParameterSpec(AUTH_TAG_LENGTH, nonce);
-            Cipher cipher = CIPHER_POOL.get();
-            cipher.init(ENCRYPT_MODE, secretKeySpec, paramSpec);
-            byte[] encrypted = copyOf(nonce, nonce.length + cipher.getOutputSize(data.length));
-            cipher.updateAAD(aesAuthData);
-            cipher.doFinal(data, 0, data.length, encrypted, nonce.length);
+            CryptoState crypto = CRYPTO_POOL.get();
+
+            byte[] iv = new byte[IV_LENGTH];
+            crypto.random.nextBytes(iv);
+
+            crypto.cipher.init(ENCRYPT_MODE, symmetricKey, new IvParameterSpec(iv));
+            byte[] ciptertext = crypto.cipher.doFinal(data);
+
+            crypto.hmac.init(hmacSecret);
+            crypto.hmac.update(iv);
+            byte[] mac = crypto.hmac.doFinal(ciptertext);
+
+            byte[] encrypted = new byte[mac.length + iv.length + ciptertext.length];
+            System.arraycopy(mac, 0, encrypted, 0, mac.length);
+            System.arraycopy(iv, 0, encrypted, mac.length, iv.length);
+            System.arraycopy(ciptertext, 0, encrypted, mac.length + iv.length, ciptertext.length);
             return encrypted;
         } catch (Exception e) {
+            throw new RuntimeException("Encrypt failed"); // drop the root cause
+        }
+    }
+
+    static CryptoState buildCrypto() {
+        try {
+            return new CryptoState(
+                    Cipher.getInstance(CRYPTO_ALGORITHM),
+                    Mac.getInstance(MAC_ALGORITHM),
+                    new SecureRandom());
+        } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    static class CryptoState {
+        final Cipher cipher;
+        final Mac hmac;
+        final SecureRandom random;
+
+        CryptoState(Cipher cipher, Mac hmac, SecureRandom random) {
+            this.cipher = cipher;
+            this.hmac = hmac;
+            this.random = random;
         }
     }
 }
