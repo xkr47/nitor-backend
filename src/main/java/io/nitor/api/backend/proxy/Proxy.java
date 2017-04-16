@@ -304,8 +304,8 @@ public class Proxy implements Handler<RoutingContext> {
                 } else {
                     if (!creq.isChunked()) {
                         creq.putHeader("content-length", Integer.toString(body.length()));
-                        creq.end(routingContext.getBody());
                     }
+                    creq.end(routingContext.getBody());
                 }
             } else {
                 sreq.endHandler(v -> {
