@@ -1,5 +1,5 @@
 /**
- * Copyright 2016-2017 Nitor Creations Oy
+ * Copyright 2016-2017 Nitor Creations Oy, Jonas Berlin
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,7 +65,8 @@ public class SetupProxy {
                     targetHandler.handle(proxyTarget.withSuffix(suffix));
                 },
                 serverOptions.getIdleTimeout(),
-                proxyConf.getInteger("clientReceiveTimeout", 300));
+                proxyConf.getInteger("clientReceiveTimeout", 300),
+                SimpleLogProxyTracer::new);
 
         router.route(proxyConf.getString("route")).handler(proxy::handle);
 
