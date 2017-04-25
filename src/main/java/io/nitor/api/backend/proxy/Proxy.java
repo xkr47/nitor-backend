@@ -1,5 +1,5 @@
 /**
- * Copyright 2016-2017 Nitor Creations Oy
+ * Copyright 2016-2017 Nitor Creations Oy, Jonas Berlin
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -228,8 +228,8 @@ public class Proxy implements Handler<RoutingContext> {
                         WebSocketHandshakeRejectedException e = (WebSocketHandshakeRejectedException) t;
                         sres.setStatusCode(e.resp.status().code());
                         sres.setStatusMessage(e.resp.status().reasonPhrase());
-                        MultiMap headers = new HeadersAdaptor(e.resp.headers());
-                        copyEndToEndHeaders(headers, sres.headers());
+                        MultiMap cresh = new HeadersAdaptor(e.resp.headers());
+                        copyEndToEndHeaders(cresh, sres.headers());
                         sres.headers().add("keep-alive", keepAliveHeaderValue);
                         sres.headers().add("connection", "keep-alive");
                         sres.headers().set("content-length", "0");
