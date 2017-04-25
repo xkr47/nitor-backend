@@ -214,10 +214,13 @@ public class Proxy implements Handler<RoutingContext> {
                                 })
                                 .exceptionHandler(t -> {
                                     t.printStackTrace();
-                                    try {
-                                        pair[1].close();
-                                    } catch (IllegalStateException e) {
-                                        // whatever
+                                    if (!isClosed[0]) {
+                                        isClosed[0] = true;
+                                        try {
+                                            pair[1].close();
+                                        } catch (IllegalStateException e) {
+                                            // whatever
+                                        }
                                     }
                                 });
                     }
