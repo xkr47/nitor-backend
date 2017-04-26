@@ -318,7 +318,10 @@ public class Proxy implements Handler<RoutingContext> {
                 if (!state.clientFinished) {
                     state.clientFinished = true;
                     tracer.incomingConnectionPrematurelyClosed();
-                    creq.connection().close();
+                    HttpConnection connection = creq.connection();
+                    if (connection != null) {
+                        connection.close();
+                    } // else TODO
                 }
                 if (!state.serverFinished) {
                     state.serverFinished = true;
