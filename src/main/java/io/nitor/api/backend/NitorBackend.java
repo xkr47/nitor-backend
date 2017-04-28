@@ -1,5 +1,5 @@
 /**
- * Copyright 2016-2017 Nitor Creations Oy
+ * Copyright 2016-2017 Nitor Creations Oy, Jonas Berlin
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -130,7 +130,7 @@ public class NitorBackend extends AbstractVerticle
             }
         }
 
-        String publicURI = config().getString("publicURI", "https://localhost:" + listenPort);
+        String publicURI = config().getString("publicURI", "http" + (httpServerOptions.isSsl() ? "s" : "") + "://localhost:" + listenPort);
         if (publicURI.endsWith("/")) {
             publicURI = publicURI.substring(0, publicURI.length() - 1);
         }
