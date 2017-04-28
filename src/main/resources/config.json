@@ -9,5 +9,12 @@
   "oidcAuth": null,
   "adAuth": null,
   "session": null,
-  "proxy": []
+  "proxy": [
+    {
+      "route": "/*",
+      "path": "/",
+      "host": "localhost",
+      "port": 44444
+    }
+  ]
 }
