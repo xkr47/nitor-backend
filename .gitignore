@@ -5,6 +5,9 @@ target
 
 # idea
 backend.iml
+/.idea/preferred-vcs.xml
+/.idea/uiDesigner.xml
+
 
 # Package Files #
 *.jar
