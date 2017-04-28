@@ -17,5 +17,12 @@
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "same-origin"
   },
-  "proxy": []
+  "proxy": [
+    {
+      "route": "/*",
+      "path": "/",
+      "host": "localhost",
+      "port": 44444
+    }
+  ]
 }
