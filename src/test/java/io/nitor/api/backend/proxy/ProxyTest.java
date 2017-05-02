@@ -15,24 +15,53 @@
  */
 package io.nitor.api.backend.proxy;
 
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.extension.ExtendWith;
 
-class ProxyTest {
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
-    private Vertx vertx;
+import static io.vertx.core.Future.future;
 
+class ProxyTest extends AbstractVerticle {
+
+    Vertx vertx;
+    final CountDownLatch cdl = new CountDownLatch(1);
+    AsyncResult<Void> result;
 
     @BeforeEach
     public void setup() {
         vertx = Vertx.vertx();
-        vertx.
+        vertx.deployVerticle(this);
+    }
 
+    @Override
+    public void start() throws Exception {
+        runTest().setHandler(ar -> {
+            result = ar;
+            cdl.countDown();
+        });
     }
 
     @Test
-    public void foo() {
+    public void test() throws Throwable {
+        cdl.await(10, TimeUnit.SECONDS);
+        if (result.failed()) {
+            throw result.cause();
+        }
+    }
 
+    @AfterEach
+    public void teardown() {
+        vertx.close();
+    }
+
+    private Future<Void> runTest() {
+        Future<Void> done = future();
+        vertx.setTimer(1000, l -> done.complete());
+        return done;
     }
 }
