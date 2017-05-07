@@ -118,7 +118,8 @@ The `route` specifies where the proxy files are exposed. (Note: different from a
 The `hostHeader` allows setting a `Host` header into the outgoing http request - the original request information is available in `X-Host`, `X-Forwarded-For` and `X-Forwarded-Proto` headers.
 The `receiveTimeout` does not seem to work yet correctly.
 
-### Proxying to another HTTP service
+### Customizing outgoing proxy request or outoing response
+
 A list of customization scripts can be provided.
 ```json
   "customize": [{
