@@ -15,51 +15,28 @@
  */
 package io.nitor.api.backend.proxy;
 
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.AsyncResult;
+import io.nitor.api.backend.tls.SetupHttpServerOptions;
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
-import org.junit.jupiter.api.*;
-
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.Router;
 
 import static io.vertx.core.Future.future;
 
-class ProxyTest extends AbstractVerticle {
+class ProxyTest extends VertxTest {
+    public static final int PORT = 20111;
 
-    Vertx vertx;
-    final CountDownLatch cdl = new CountDownLatch(1);
-    AsyncResult<Void> result;
+    protected Future<Void> runTest() {
+        HttpServerOptions httpServerOptions = SetupHttpServerOptions.createHttpServerOptions(config());
+        Router router = Router.router(vertx);
+        JsonObject conf;
+        SetupProxy.setupProxy(vertx, router, conf, httpServerOptions);
+        vertx.createHttpServer(httpServerOptions)
+                .requestHandler(router::accept)
+                .listen(PORT, r -> {
 
-    @BeforeEach
-    public void setup() {
-        vertx = Vertx.vertx();
-        vertx.deployVerticle(this);
-    }
+                });
 
-    @Override
-    public void start() throws Exception {
-        runTest().setHandler(ar -> {
-            result = ar;
-            cdl.countDown();
-        });
-    }
-
-    @Test
-    public void test() throws Throwable {
-        cdl.await(10, TimeUnit.SECONDS);
-        if (result.failed()) {
-            throw result.cause();
-        }
-    }
-
-    @AfterEach
-    public void teardown() {
-        vertx.close();
-    }
-
-    private Future<Void> runTest() {
         Future<Void> done = future();
         vertx.setTimer(1000, l -> done.complete());
         return done;
