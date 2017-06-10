@@ -15,6 +15,7 @@
  */
 package io.nitor.api.backend.proxy;
 
+import io.nitor.api.backend.proxy.Proxy.DefaultPumpStarter;
 import io.nitor.api.backend.proxy.Proxy.ProxyException;
 import io.nitor.api.backend.proxy.Proxy.RejectReason;
 import io.vertx.core.Vertx;
@@ -66,7 +67,8 @@ public class SetupProxy {
                 },
                 serverOptions.getIdleTimeout(),
                 proxyConf.getInteger("clientReceiveTimeout", 300),
-                SimpleLogProxyTracer::new);
+                SimpleLogProxyTracer::new,
+                new DefaultPumpStarter());
 
         router.route(proxyConf.getString("route")).handler(proxy::handle);
 

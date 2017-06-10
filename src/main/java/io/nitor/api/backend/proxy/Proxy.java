@@ -23,9 +23,9 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
 import io.vertx.core.http.impl.HeadersAdaptor;
 import io.vertx.core.http.impl.WebSocketHandshakeRejectedException;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.streams.Pump;
+import io.vertx.core.streams.ReadStream;
+import io.vertx.core.streams.WriteStream;
 import io.vertx.ext.web.RoutingContext;
 
 import java.time.Clock;
@@ -49,6 +49,7 @@ public class Proxy implements Handler<RoutingContext> {
     private final String keepAliveHeaderValue;
     private final int clientReceiveTimeout;
     private final Supplier<ProxyTracer> tracerFactory;
+    private final PumpStarter pump;
 
     public interface TargetResolver {
         /**
@@ -65,12 +66,29 @@ public class Proxy implements Handler<RoutingContext> {
         void resolveNextHop(RoutingContext routingContext, Handler<Target> targetHandler);
     }
 
-    public Proxy(HttpClient client, TargetResolver targetResolver, int serverIdleTimeout, int clientReceiveTimeout, Supplier<ProxyTracer> tracerFactory) {
+    @FunctionalInterface
+    public interface PumpStarter {
+        void start(ReadStream<Buffer> rs, WriteStream<Buffer> ws, ProxyTracer t);
+    }
+
+    public static class DefaultPumpStarter implements PumpStarter {
+        @Override
+        public void start(ReadStream<Buffer> rs, WriteStream<Buffer> ws, ProxyTracer t) {
+            Pump.pump(rs, ws).start();
+        }
+    }
+
+    /**
+     * @param tracerFactory used to create ProxyTracer instances for each processed request. ProxyTracer instances receive all the lifecycle events related to proxying of a single request.
+     * @param pump used to pump data. Typically <tt>new DefaultPumpStarter()</tt>
+     */
+    public Proxy(HttpClient client, TargetResolver targetResolver, int serverIdleTimeout, int clientReceiveTimeout, Supplier<ProxyTracer> tracerFactory, PumpStarter pump) {
         this.client = client;
         this.targetResolver = targetResolver;
         this.keepAliveHeaderValue = "timeout=" + (serverIdleTimeout - 5);
         this.clientReceiveTimeout = clientReceiveTimeout;
         this.tracerFactory = tracerFactory;
+        this.pump = pump;
     }
 
     public static class Target {
@@ -286,7 +304,6 @@ public class Proxy implements Handler<RoutingContext> {
                     sres.setChunked(true);
                 }
                 tracer.outgoingResponseInitial();
-                Pump resPump = Pump.pump(cres, sres);
                 cres.endHandler(v -> {
                     tracer.incomingResponseEnd();
                     state.clientFinished = true;
@@ -295,7 +312,7 @@ public class Proxy implements Handler<RoutingContext> {
                         sres.end();
                     }
                 });
-                resPump.start();
+                pump.start(cres, sres, tracer);
             });
             creq.exceptionHandler(t -> {
                 tracer.outgoingRequestException(t);
@@ -350,8 +367,7 @@ public class Proxy implements Handler<RoutingContext> {
                     }
                     tracer.incomingRequestEnd();
                 });
-                Pump reqPump = Pump.pump(sreq, creq);
-                reqPump.start();
+                pump.start(sreq, creq, tracer);
             }
         });
     }
