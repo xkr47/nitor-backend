@@ -1,5 +1,5 @@
 /**
- * Copyright 2017 Jonas Berlin
+ * Copyright 2017 Jonas Berlin, Nitor Creations Oy
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ public class SimpleLogProxyTracer implements ProxyTracer {
     public void incomingRequestStart(RoutingContext ctx, boolean isTls, boolean isHTTP2, String chost) {
         this.ctx = ctx;
         String reqLogInfix = "Incoming " + (isHTTP2 ? "H2 " : "") + (isTls ? "HTTPS " : "") + "request from " + chost + ":";
-        trace(LogType.sreq, reqLogInfix + dumpSReq(ctx.request(), "\t"), null);
+        trace(LogType.sreq, reqLogInfix + dumpSReq(ctx.request(), ""), null);
     }
 
     @Override
@@ -88,12 +88,12 @@ public class SimpleLogProxyTracer implements ProxyTracer {
 
     @Override
     public void outgoingResponseInitial() {
-        trace(LogType.sres, "Outgoing response initial" + dumpSRes(ctx.response(), ""));
+        //trace(LogType.sres, "Outgoing response initial" + dumpSRes(ctx.response(), ""));
     }
 
     @Override
     public void outgoingResponseHeadersEnd(Void v) {
-        trace(LogType.sres, "Outgoing response final" + dumpSRes(ctx.response(), /* logFile != null ? "" : */ "\t"));
+        trace(LogType.sres, "Outgoing response final" + dumpSRes(ctx.response(), /* logFile != null ? "" : */ ""));
     }
 
     @Override
@@ -132,13 +132,18 @@ public class SimpleLogProxyTracer implements ProxyTracer {
     }
 
     public enum LogType {
-        sreq,
-        creq,
-        cres,
-        sres,
-        reqbody,
-        resbody,
-        none
+        sreq(">| "),
+        creq(" |>"),
+        cres(" |<"),
+        sres("<| "),
+        reqbody(">>>"),
+        resbody("<<<"),
+        none("   "),
+        ;
+        public final String graphic;
+        LogType(String graphic) {
+            this.graphic = graphic;
+        }
     }
 
     void trace(LogType logType, String msg) {
@@ -146,7 +151,7 @@ public class SimpleLogProxyTracer implements ProxyTracer {
     }
 
     void trace(LogType logType, String msg, Throwable t) {
-        logger.trace(logType + msg, t);
+        logger.trace(logType.graphic + ' ' + msg, t);
     }
 
     String dumpHeaders(MultiMap h, String indent) {
@@ -158,18 +163,18 @@ public class SimpleLogProxyTracer implements ProxyTracer {
     }
 
     String dumpCReq(HttpClientRequest req) {
-        return "\n" + req.method().name() + " " + req.uri() + dumpHeaders(req.headers(), "");
+        return "\n\t" + req.method().name() + " " + req.uri() + dumpHeaders(req.headers(), "\t");
     }
     String dumpSReq(HttpServerRequest req, String indent) {
-        return "\n" + indent + req.method().name() + " " + req.uri() + " " + req.version().name() + dumpHeaders(req.headers(), indent);
+        return "\n\t" + indent + req.method().name() + " " + req.uri() + " " + req.version().name() + dumpHeaders(req.headers(), "\t" + indent);
     }
     String dumpCRes(HttpClientResponse res) {
-        return "\n" + res.statusCode() + " " + res.statusMessage() + dumpHeaders(res.headers(), "");
+        return "\n\t" + res.statusCode() + " " + res.statusMessage() + dumpHeaders(res.headers(), "\t");
     }
     String dumpSRes(HttpServerResponse res, String indent) {
-        return "\n" + indent + res.getStatusCode() + " " + res.getStatusMessage() + dumpHeaders(res.headers(), indent);
+        return "\n\t" + indent + res.getStatusCode() + " " + res.getStatusMessage() + dumpHeaders(res.headers(), "\t" + indent);
     }
     String dumpCWebsocket(MultiMap creqh) {
-        return "\n" + ctx.request().method().name() + " " + nextHop.uri + dumpHeaders(creqh, "");
+        return "\n\t" + ctx.request().method().name() + " " + nextHop.uri + dumpHeaders(creqh, "\t");
     }
 }
