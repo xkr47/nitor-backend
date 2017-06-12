@@ -123,6 +123,7 @@ public class Proxy implements Handler<RoutingContext> {
             "trailer",
             "transfer-encoding",
             "upgrade",
+            "upgrade-insecure-requests",
             // TODO http2 hbh headers
             ":method",
             ":path",
