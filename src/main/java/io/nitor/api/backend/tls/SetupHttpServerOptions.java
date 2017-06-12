@@ -16,7 +16,6 @@
 package io.nitor.api.backend.tls;
 
 import io.vertx.core.http.HttpServerOptions;
-import io.vertx.core.http.HttpVersion;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.JdkSSLEngineOptions;
 import io.vertx.core.net.OpenSSLEngineOptions;
@@ -27,7 +26,7 @@ import java.util.List;
 
 import static io.vertx.core.http.ClientAuth.REQUEST;
 import static io.vertx.core.http.HttpVersion.HTTP_1_1;
-import static io.vertx.core.http.HttpVersion.HTTP_2;
+import static java.lang.Boolean.TRUE;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
@@ -47,7 +46,7 @@ public class SetupHttpServerOptions {
                 .setReuseAddress(true)
                 .setCompressionSupported(false) // otherwise it automatically compresses based on response headers even if pre-compressed with e.g. proxy
                 .setUsePooledBuffers(true)
-                // TODO: upcoming in vertx 3.4+ .setCompressionLevel(2)
+                .setCompressionLevel(2)
                 .setIdleTimeout(config.getInteger("idleTimeout", (int) MINUTES.toSeconds(10)));
 
         if (!config.getBoolean("http2", true)) {
@@ -73,7 +72,7 @@ public class SetupHttpServerOptions {
                                 .addCertPath(clientAuth.getString("clientChain"))
                         );
             }
-            if (config.getBoolean("useNativeOpenSsl")) {
+            if (TRUE.equals(config.getBoolean("useNativeOpenSsl"))) {
                 httpOptions
                         .setUseAlpn(true)
                         .setSslEngineOptions(new OpenSSLEngineOptions());
