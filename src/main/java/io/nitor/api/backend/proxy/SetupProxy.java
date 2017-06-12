@@ -69,14 +69,21 @@ public class SetupProxy {
 
         router.route(proxyConf.getString("route")).handler(proxy::handle);
 
-        router.route(proxyConf.getString("route")).handler(routingContext -> {
+        router.route(proxyConf.getString("route")).failureHandler(routingContext -> {
             if (routingContext.failed()) {
                 ProxyException ex = (ProxyException) routingContext.failure();
                 if (!routingContext.response().headWritten()) {
-                    String statusMsg =
-                            ex.getCause() != null ? ex.getCause().getMessage() :
-                                    ex.reason == RejectReason.noHostHeader ? "Exhausted resources while trying to extract Host header from the request" : "";
-                    routingContext.response().setStatusCode(ex.statusCode);
+                    String statusMsg = "";
+                    int statusCode = 502;
+                    if (ex != null) {
+                        statusCode = ex.statusCode;
+                        if (ex.getCause() != null) {
+                            statusMsg = ex.getCause().getMessage();
+                        } else if (ex.reason == RejectReason.noHostHeader) {
+                            statusMsg = "Exhausted resources while trying to extract Host header from the request";
+                        }
+                    }
+                    routingContext.response().setStatusCode(statusCode);
                     routingContext.response().headers().set("content-type", "text/plain;charset=UTF-8");
                     routingContext.response().end(statusMsg);
                 }
