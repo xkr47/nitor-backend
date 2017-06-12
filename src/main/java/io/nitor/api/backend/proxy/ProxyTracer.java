@@ -1,5 +1,5 @@
 /**
- * Copyright 2017 Jonas Berlin
+ * Copyright 2017 Jonas Berlin, Nitor Creations Oy
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import io.vertx.ext.web.RoutingContext;
 
 public interface ProxyTracer {
 
-    void incomingRequestStart(RoutingContext ctx, boolean isTls, boolean isHTTP2, String chost);
+    void incomingRequestStart(RoutingContext ctx, boolean isTls, boolean isHTTP2, String chost, String reqId);
 
     void incomingRequestEnd();
 

@@ -28,13 +28,15 @@ public class SimpleLogProxyTracer implements ProxyTracer {
 
     static final Logger logger = LoggerFactory.getLogger(SimpleLogProxyTracer.class);
     protected RoutingContext ctx;
+    protected String reqId;
     protected Proxy.Target nextHop;
     protected HttpClientRequest creq;
     protected HttpClientResponse cres;
 
     @Override
-    public void incomingRequestStart(RoutingContext ctx, boolean isTls, boolean isHTTP2, String chost) {
+    public void incomingRequestStart(RoutingContext ctx, boolean isTls, boolean isHTTP2, String chost, String reqId) {
         this.ctx = ctx;
+        this.reqId = reqId;
         String reqLogInfix = "Incoming " + (isHTTP2 ? "H2 " : "") + (isTls ? "HTTPS " : "") + "request from " + chost + ":";
         trace(LogType.sreq, reqLogInfix + dumpSReq(ctx.request(), ""), null);
     }
@@ -151,7 +153,7 @@ public class SimpleLogProxyTracer implements ProxyTracer {
     }
 
     void trace(LogType logType, String msg, Throwable t) {
-        logger.trace(logType.graphic + ' ' + msg, t);
+        logger.trace(logType.graphic + " [" + reqId + "] " + msg, t);
     }
 
     String dumpHeaders(MultiMap h, String indent) {

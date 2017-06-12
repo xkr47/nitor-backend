@@ -184,14 +184,17 @@ public class Proxy implements Handler<RoutingContext> {
         final HttpServerRequest sreq = routingContext.request();
         final boolean isTls = "https".equals(routingContext.request().scheme());
         final boolean isHTTP2 = routingContext.request().version() == HTTP_2;
-        String reqId = sreq.headers().get(requestIdHeader);
-        if (reqId == null) {
-            reqId = Long.toString(requestId.getAndIncrement());
-            sreq.headers().add(requestIdHeader, reqId);
-        }
         final String chost = sreq.remoteAddress().host();
         final ProxyTracer tracer = tracerFactory.get();
-        tracer.incomingRequestStart(routingContext, isTls, isHTTP2, chost);
+        String reqId = sreq.headers().get(requestIdHeader);
+        boolean hadRequestId = reqId != null;
+        if (reqId == null) {
+            reqId = Long.toString(requestId.getAndIncrement());
+        }
+        tracer.incomingRequestStart(routingContext, isTls, isHTTP2, chost, reqId);
+        if (!hadRequestId) {
+            sreq.headers().add(requestIdHeader, reqId);
+        }
 
         HttpServerResponse sres = sreq.response();
         sres.exceptionHandler(tracer::outgoingResponseException);
@@ -434,7 +437,7 @@ public class Proxy implements Handler<RoutingContext> {
                         }
                     };
                 } else {
-                    log.info("Immediate send");
+                    log.info("Not expect-100");
                     sreqStream = sreq;
                 }
                 pump.start(sreqStream, creq, tracer);
