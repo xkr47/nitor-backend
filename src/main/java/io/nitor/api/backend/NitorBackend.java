@@ -98,7 +98,9 @@ public class NitorBackend extends AbstractVerticle
             if (httpServerOptions.isSsl()) {
                 resp.putHeader("strict-transport-security", "max-age=31536000; includeSubDomains");
             }
-            resp.putHeader("x-frame-options", "DENY");
+            if (!resp.headers().contains("x-frame-options")) {
+                resp.putHeader("x-frame-options", "DENY");
+            }
             routingContext.next();
         });
         router.get("/healthCheck").handler(routingContext -> {
