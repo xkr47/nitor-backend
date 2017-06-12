@@ -306,17 +306,24 @@ public class Proxy implements Handler<RoutingContext> {
                 sres.setStatusMessage(cres.statusMessage());
                 MultiMap headers = cres.headers();
                 copyEndToEndHeaders(headers, sres.headers());
-                if (!isHTTP2) {
-                    sres.headers().add("keep-alive", keepAliveHeaderValue);
-                    sres.headers().add("connection", "keep-alive");
-                }
                 final boolean reqCompletedBeforeResponse = state.requestComplete;
                 if (state.expecting100) {
                     log.info("Got " + cres.statusCode() + " instead of 100 Continue");
-                    if (!isHTTP2 && state.receivedRequestBodyBefore100 && !reqCompletedBeforeResponse) {
-                        // TODO investigate whether vertx is able to handle the server request correctly without us closing the conn
-                        log.info("Client had started streaming data anyway, so request message boundary is lost. Continue streaming, but close server connection after response complete.");
-                        sres.headers().add("connection", "close");
+                    if (!isHTTP2) {
+                        if (/* state.receivedRequestBodyBefore100 && */ !reqCompletedBeforeResponse) {
+                            // TODO investigate whether vertx is able to handle the server request correctly without us closing the conn
+                            // but actually the client might have data in transit..
+                            log.info("Client might have started streaming data anyway, so request message boundary is lost. Continue streaming, but close server connection after response complete.");
+                            sres.headers().set("connection", "close");
+                        } else {
+                            log.info("Client had streamed the complete data anyway. Can carry on without closing server conn.");
+                        }
+                    }
+                }
+                if (!isHTTP2) {
+                    if (!sres.headers().contains("connection") || !sres.headers().get("connection").contains("close")) {
+                        sres.headers().add("keep-alive", keepAliveHeaderValue);
+                        sres.headers().add("connection", "keep-alive");
                     }
                 }
                 if (!headers.contains("content-length")) {
@@ -330,7 +337,7 @@ public class Proxy implements Handler<RoutingContext> {
                         state.serverFinished = true;
                         sres.end();
                     }
-                    if (state.expecting100 && state.receivedRequestBodyBefore100 && !reqCompletedBeforeResponse) {
+                    if (state.expecting100 && /* state.receivedRequestBodyBefore100 && */ !reqCompletedBeforeResponse) {
                         log.info("Client had started streaming data anyway, so request message boundary is lost. Close client connection.");
                         creq.connection().close();
                     }
