@@ -19,18 +19,34 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.junit.jupiter.api.*;
 
-import java.util.concurrent.CountDownLatch;
+import java.nio.file.Paths;
+import java.util.concurrent.Exchanger;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static io.vertx.core.Future.future;
+import static java.lang.System.setProperty;
+import static java.nio.file.Files.exists;
 
 class ProxyTest extends AbstractVerticle {
 
+    static {
+        /*
+        if (exists(Paths.get("log4j2.xml"))) {
+            setProperty("log4j.configurationFile", "log4j2.xml");
+        }
+        */
+        setProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager");
+        setProperty("vertx.logger-delegate-factory-class-name", "io.vertx.core.logging.Log4j2LogDelegateFactory");
+    }
+
     Vertx vertx;
-    final CountDownLatch cdl = new CountDownLatch(1);
-    AsyncResult<Void> result;
+    final Exchanger<AsyncResult<Void>> resultExch = new Exchanger<>();
+    protected final Logger logger = LoggerFactory.getLogger(ProxyTest.class);
 
     @BeforeEach
     public void setup() {
@@ -41,22 +57,40 @@ class ProxyTest extends AbstractVerticle {
     @Override
     public void start() throws Exception {
         runTest().setHandler(ar -> {
-            result = ar;
-            cdl.countDown();
+            try {
+                resultExch.exchange(ar);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         });
     }
 
     @Test
     public void test() throws Throwable {
-        cdl.await(10, TimeUnit.SECONDS);
+        logger.info("test");
+        AsyncResult<Void> result = resultExch.exchange(null, 10, TimeUnit.SECONDS);
+        logger.info("/test");
         if (result.failed()) {
             throw result.cause();
         }
     }
 
     @AfterEach
-    public void teardown() {
-        vertx.close();
+    public void teardown() throws Throwable {
+        logger.info("teardown");
+        final Exchanger<AsyncResult<Void>> teardownExch = new Exchanger<>();
+        vertx.close(ar -> {
+            try {
+                teardownExch.exchange(ar);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+        AsyncResult<Void> result = teardownExch.exchange(null, 10, TimeUnit.SECONDS);
+        logger.info("/teardown");
+        if (result.failed()) {
+            throw result.cause();
+        }
     }
 
     private Future<Void> runTest() {
