@@ -73,12 +73,13 @@ public class Proxy implements Handler<RoutingContext> {
 
     @FunctionalInterface
     public interface PumpStarter {
-        void start(ReadStream<Buffer> rs, WriteStream<Buffer> ws, ProxyTracer t);
+        enum Type {REQUEST, RESPONSE}
+        void start(Type type, ReadStream<Buffer> rs, WriteStream<Buffer> ws, ProxyTracer t);
     }
 
     public static class DefaultPumpStarter implements PumpStarter {
         @Override
-        public void start(ReadStream<Buffer> rs, WriteStream<Buffer> ws, ProxyTracer t) {
+        public void start(Type type, ReadStream<Buffer> rs, WriteStream<Buffer> ws, ProxyTracer t) {
             Pump.pump(rs, ws).start();
         }
     }
@@ -345,7 +346,7 @@ public class Proxy implements Handler<RoutingContext> {
                         creq.connection().close();
                     }
                 });
-                pump.start(cres, sres, tracer);
+                pump.start(PumpStarter.Type.RESPONSE, cres, sres, tracer);
             });
             creq.exceptionHandler(t -> {
                 tracer.outgoingRequestException(t);
@@ -440,7 +441,7 @@ public class Proxy implements Handler<RoutingContext> {
                     log.info("Not expect-100");
                     sreqStream = sreq;
                 }
-                pump.start(sreqStream, creq, tracer);
+                pump.start(PumpStarter.Type.REQUEST, sreqStream, creq, tracer);
             }
         });
     }
