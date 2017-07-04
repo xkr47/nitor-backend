@@ -37,8 +37,12 @@ public class SimpleLogProxyTracer implements ProxyTracer {
     public void incomingRequestStart(RoutingContext ctx, boolean isTls, boolean isHTTP2, String chost, String reqId) {
         this.ctx = ctx;
         this.reqId = reqId;
-        String reqLogInfix = "Incoming " + (isHTTP2 ? "H2 " : "") + (isTls ? "HTTPS " : "") + "request from " + chost + ":";
-        trace(LogType.sreq, reqLogInfix + dumpSReq(ctx.request(), ""), null);
+        String prefix = incomingRequestMsgPrefix(isTls, isHTTP2, chost);
+        trace(LogType.sreq, prefix + dumpSReq(ctx.request(), ""));
+    }
+
+    protected String incomingRequestMsgPrefix(boolean isTls, boolean isHTTP2, String chost) {
+        return "Incoming " + (isHTTP2 ? "H2 " : "") + (isTls ? "HTTPS " : "") + "reqest from " + chost + ":";
     }
 
     @Override
@@ -148,15 +152,15 @@ public class SimpleLogProxyTracer implements ProxyTracer {
         }
     }
 
-    void trace(LogType logType, String msg) {
+    protected void trace(LogType logType, String msg) {
         trace(logType, msg, null);
     }
 
-    void trace(LogType logType, String msg, Throwable t) {
+    protected void trace(LogType logType, String msg, Throwable t) {
         logger.trace(logType.graphic + " [" + reqId + "] " + msg, t);
     }
 
-    String dumpHeaders(MultiMap h, String indent) {
+    protected String dumpHeaders(MultiMap h, String indent) {
         StringBuilder sb = new StringBuilder();
         for (String name : h.names()) {
             sb.append("\n").append(indent).append(name).append(": ").append(h.getAll(name).stream().reduce((partial,element) -> partial + "\n" + indent + "  " + element).orElse(""));
@@ -164,19 +168,19 @@ public class SimpleLogProxyTracer implements ProxyTracer {
         return sb.toString();
     }
 
-    String dumpCReq(HttpClientRequest req) {
+    protected String dumpCReq(HttpClientRequest req) {
         return "\n\t" + req.method().name() + " " + req.uri() + dumpHeaders(req.headers(), "\t");
     }
-    String dumpSReq(HttpServerRequest req, String indent) {
+    protected String dumpSReq(HttpServerRequest req, String indent) {
         return "\n\t" + indent + req.method().name() + " " + req.uri() + " " + req.version().name() + dumpHeaders(req.headers(), "\t" + indent);
     }
-    String dumpCRes(HttpClientResponse res) {
+    protected String dumpCRes(HttpClientResponse res) {
         return "\n\t" + res.statusCode() + " " + res.statusMessage() + dumpHeaders(res.headers(), "\t");
     }
-    String dumpSRes(HttpServerResponse res, String indent) {
+    protected String dumpSRes(HttpServerResponse res, String indent) {
         return "\n\t" + indent + res.getStatusCode() + " " + res.getStatusMessage() + dumpHeaders(res.headers(), "\t" + indent);
     }
-    String dumpCWebsocket(MultiMap creqh) {
+    protected String dumpCWebsocket(MultiMap creqh) {
         return "\n\t" + ctx.request().method().name() + " " + nextHop.uri + dumpHeaders(creqh, "\t");
     }
 }
