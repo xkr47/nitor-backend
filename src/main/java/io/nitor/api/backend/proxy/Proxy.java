@@ -140,6 +140,7 @@ public class Proxy implements Handler<RoutingContext> {
 
     static final Set<String> hopByHopHeaders = new HashSet<>(asList(
             "connection",
+            "host", // we set it explicitly with setHost(), and manually set header overrides in mysterious ways :)
             "keep-alive",
             "proxy-authenticate",
             "proxy-authorization",
