@@ -169,7 +169,7 @@ public class SimpleLogProxyTracer implements ProxyTracer {
     }
 
     protected String dumpCReq(HttpClientRequest req) {
-        return "\n\t" + req.method().name() + " " + req.uri() + dumpHeaders(req.headers(), "\t");
+        return "\n\t" + req.method().name() + " " + req.uri() + dumpHeaders(req.headers(), "\t") + "\n\tHost: " + req.getHost();
     }
     protected String dumpSReq(HttpServerRequest req, String indent) {
         return "\n\t" + indent + req.method().name() + " " + req.uri() + " " + req.version().name() + dumpHeaders(req.headers(), "\t" + indent);
