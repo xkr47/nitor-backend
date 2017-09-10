@@ -296,6 +296,7 @@ public class Proxy implements Handler<RoutingContext> {
             String expectStr;
             state.expecting100 = null != (expectStr = sreq.headers().get("expect")) && expectStr.equalsIgnoreCase("100-continue");
             HttpClientRequest creq = client.request(sreq.method(), nextHop.socketPort, nextHop.socketHost, nextHop.uri);
+            creq.setRawMethod(sreq.rawMethod());
             creq.setTimeout(SECONDS.toMillis(clientReceiveTimeout));
             creq.handler(cres -> {
                 cres.exceptionHandler(t -> {
