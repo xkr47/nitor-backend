@@ -16,10 +16,7 @@
 package io.nitor.api.backend.proxy;
 
 import io.vertx.core.MultiMap;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpClientResponse;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.http.*;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.RoutingContext;
@@ -169,10 +166,11 @@ public class SimpleLogProxyTracer implements ProxyTracer {
     }
 
     protected String dumpCReq(HttpClientRequest req) {
-        return "\n\t" + req.method().name() + " " + req.uri() + dumpHeaders(req.headers(), "\t") + "\n\tHost: " + req.getHost();
+        return "\n\t" + getMethod(req.method(), req.getRawMethod()) + " " + req.uri() + dumpHeaders(req.headers(), "\t") + "\n\tHost: " + req.getHost();
     }
+
     protected String dumpSReq(HttpServerRequest req, String indent) {
-        return "\n\t" + indent + req.method().name() + " " + req.uri() + " " + req.version().name() + dumpHeaders(req.headers(), "\t" + indent);
+        return "\n\t" + indent + getMethod(req.method(), req.rawMethod()) + " " + req.uri() + " " + req.version().name() + dumpHeaders(req.headers(), "\t" + indent);
     }
     protected String dumpCRes(HttpClientResponse res) {
         return "\n\t" + res.statusCode() + " " + res.statusMessage() + dumpHeaders(res.headers(), "\t");
@@ -181,6 +179,10 @@ public class SimpleLogProxyTracer implements ProxyTracer {
         return "\n\t" + indent + res.getStatusCode() + " " + res.getStatusMessage() + dumpHeaders(res.headers(), "\t" + indent);
     }
     protected String dumpCWebsocket(MultiMap creqh) {
-        return "\n\t" + ctx.request().method().name() + " " + nextHop.uri + dumpHeaders(creqh, "\t");
+        return "\n\t" + getMethod(ctx.request().method(), ctx.request().rawMethod()) + " " + nextHop.uri + dumpHeaders(creqh, "\t");
+    }
+
+    private String getMethod(HttpMethod method, String rawMethod) {
+        return method != HttpMethod.OTHER ? method.name() : rawMethod;
     }
 }
