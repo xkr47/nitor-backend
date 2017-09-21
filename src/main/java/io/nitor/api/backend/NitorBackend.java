@@ -99,7 +99,10 @@ public class NitorBackend extends AbstractVerticle
                 resp.putHeader("strict-transport-security", "max-age=31536000; includeSubDomains");
             }
             if (!resp.headers().contains("x-frame-options")) {
-                resp.putHeader("x-frame-options", "DENY");
+                String frameOptionsHeader = config().getString("frameOptionsHeader", "DENY");
+                if (!frameOptionsHeader.trim().isEmpty()) {
+                    resp.putHeader("x-frame-options", frameOptionsHeader);
+                }
             }
             routingContext.next();
         });

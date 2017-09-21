@@ -9,5 +9,6 @@
   "oidcAuth": null,
   "adAuth": null,
   "session": null,
+  "frameOptionsHeader": "DENY",
   "proxy": []
 }
