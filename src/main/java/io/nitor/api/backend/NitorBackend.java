@@ -41,6 +41,7 @@ import org.apache.logging.log4j.Logger;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Map.Entry;
 import java.util.stream.Stream;
 
 import static com.nitorcreations.core.utils.KillProcess.killProcessUsingPort;
@@ -98,10 +99,10 @@ public class NitorBackend extends AbstractVerticle
             if (httpServerOptions.isSsl()) {
                 resp.putHeader("strict-transport-security", "max-age=31536000; includeSubDomains");
             }
-            if (!resp.headers().contains("x-frame-options")) {
-                String frameOptionsHeader = config().getString("frameOptionsHeader", "DENY");
-                if (!frameOptionsHeader.trim().isEmpty()) {
-                    resp.putHeader("x-frame-options", frameOptionsHeader);
+            JsonObject defaultHeaders = config().getJsonObject("defaultHeaders");
+            for (Entry<String, Object> defaultHeader : defaultHeaders) {
+                if (!resp.headers().contains(defaultHeader.getKey())) {
+                    resp.putHeader(defaultHeader.getKey(), defaultHeader.getValue().toString());
                 }
             }
             routingContext.next();

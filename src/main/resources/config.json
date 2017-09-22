@@ -9,6 +9,13 @@
   "oidcAuth": null,
   "adAuth": null,
   "session": null,
-  "frameOptionsHeader": "DENY",
+  "defaultHeaders": {
+    "X-Frame-Options": "DENY",
+    "Content-Security-Policy": "default-src 'self';img-src 'self' data:;style-src 'self' 'unsafe-inline';form-action 'self';frame-ancestors 'self';upgrade-insecure-requests;disown-opener;",
+    "X-Permitted-Cross-Domain-Policies": "none",
+    "X-XSS-Protection": "1; mode=block",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "same-origin"
+  },
   "proxy": []
 }
